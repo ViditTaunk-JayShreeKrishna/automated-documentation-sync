@@ -516,6 +516,10 @@ implementation planning decision.
 
 ## 10. Final corrective-action assessment
 
+Section 11 records subsequent project-level stakeholder decisions. Earlier
+pending statuses and proposed roles in this assessment are retained as
+historical context and must be read with that update.
+
 This assessment reviews the corrected architecture at Git commit
 `a11fc3ad865dd58071bab322f6510399df4f5d82` against REQ-001 v1.0, KAN-1
 and the original findings above. It preserves the original review and
@@ -645,3 +649,57 @@ approved documentation synchronization workflow. Change the architecture
 only where a necessary correction has been reviewed and approved; preserve
 its content, diagrams and requirements baseline. Open decisions remain
 pending until an authorized stakeholder is identified and confirms them.
+
+## 11. Project-level stakeholder decisions
+
+On 2026-11-26, the project stakeholder identified themselves as the Project
+Owner and Product Owner for this capstone and as its primary technical
+decision-maker. They stated that they are authorized to make project-level
+decisions and approvals. This records the stakeholder's stated project role;
+it does not assert an organizational appointment, evaluator approval, or
+specific document-level permissions.
+
+### DR-002: project-level artefact authority direction
+
+The project stakeholder approved the following direction at project level
+for stakeholder consideration:
+
+| System | Project-level authority direction |
+| --- | --- |
+| Jira | User stories and acceptance criteria. REQ-001 also identifies Jira as the source of truth for business requirements. |
+| GitHub | Version-controlled Markdown documentation, source files and supporting artefacts. |
+| Confluence ADS | Impact reports and recorded design/review decisions. |
+
+This project-level approval does not establish any additional organizational
+or evaluator approval that may be required. The detailed direction and
+conflict handling for each artefact, and the authorization and evidence
+mechanism for impact-report and review writes, remain unresolved. The
+recommendation in section 10 to approve each exact cross-system report or
+review write was not approved by this decision. FR-023 continues to require
+authorized human approval for all cross-system updates, and review remains
+in ADS under FR-022. Do not automate affected writes until the applicable
+workflow and permissions are established.
+
+**DR-002 remains open:** the project-level direction is approved, but the
+publication-authorization and operational details above still require
+resolution and integration validation. Relevant requirements include
+FR-018 and FR-022-025; related story criteria are AC3 and AC5-AC6.
+
+### DR-013: project-level measure-first approval
+
+The project stakeholder approved the measure-first approach at project
+level: assess representative workload before establishing other operational
+targets and agreeing hosting, capacity, availability, backup retention,
+recovery time objective (RTO) and recovery point objective (RPO). No new
+numerical targets, deployment choice or operational SLA were approved.
+Any additional organizational or evaluator approval remains separate.
+
+The existing configurable 15-minute reconciliation interval and maximum
+three retries after the initial attempt, with configurable exponential
+backoff, remain unchanged. **DR-013 remains open** until representative
+measurements, operational targets and recovery arrangements are agreed and
+validated as appropriate; see NFR-002-003.
+
+These decisions do not approve the complete architecture, close Step 3,
+demonstrate implementation or validate integration capabilities. The review
+status remains **Review Completed – Pending Stakeholder Approval**.

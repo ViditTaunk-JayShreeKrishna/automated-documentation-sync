@@ -1,11 +1,19 @@
 # Design Review: Agentic SDLC - Automated Documentation Sync
 
-**Status:** Review Completed – Pending Stakeholder Approval  
+**Status:** Design Review: Approved and Completed — effective only upon explicit approval of this exact final draft
+
 **Review type:** Pre-production architecture review  
 **Architecture reviewed:** [architecture.md](architecture.md), commit `1a0b0e6e42045f710908b714c5505f9c2c136a87`  
 **Requirements reviewed:** [requirements.md](requirements.md), REQ-001 version 1.0, Approved  
 **Story:** [Jira KAN-1](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-1)  
 **Review date:** 2026-11-26
+
+Sections 1–11 preserve the review and decisions as they stood at earlier
+baselines; their pending/open findings, recommendations and approval status
+are historical, not the current disposition. Section 12 records the final
+proposed design disposition and handover. Until the authorized stakeholder
+explicitly approves this exact final draft, it is not an approval record and
+Step 3 is not closed.
 
 ## 1. Purpose, scope and method
 
@@ -703,3 +711,84 @@ validated as appropriate; see NFR-002-003.
 These decisions do not approve the complete architecture, close Step 3,
 demonstrate implementation or validate integration capabilities. The review
 status remains **Review Completed – Pending Stakeholder Approval**.
+
+## 12. Final design-review disposition and Step 4 handover
+
+### Executive summary and baseline
+
+This final proposed disposition reviews REQ-001 v1.0, KAN-1 and the
+architecture at commit `a11fc3ad865dd58071bab322f6510399df4f5d82`, including
+the five associated diagrams, together with the project decisions recorded in
+section 11. The current [architecture.md](architecture.md) section 14 supplies
+the final authority, approval, data, failure and operational contracts.
+Sections 1–11 of this review remain historical evidence, including original
+severity and the state of decisions at the time.
+
+The resulting Python modular-monolith design is suitable as the basis for
+implementation planning, conditional on project-level approval of this final
+draft. All 15 findings have the design dispositions below. Closure of a
+design finding means its design correction is specified and transferred for
+implementation and verification; it is not evidence that code, deployment,
+integration capabilities or production controls exist or have passed tests.
+There is no waiver of approved requirements. Actual provider capabilities,
+permissions, workload and recovery results remain release gates.
+
+### Final finding dispositions
+
+| Finding and original severity | Design disposition and correction evidence | Later deliverable and acceptance evidence |
+| --- | --- | --- |
+| DR-001 High | **Design resolved:** architecture sections 6 and 14.2 separate proposal edits from stale/conflict regeneration. | Python workflow tests demonstrate a changed source or target regenerates from current versions and requires a new approval; FR-023–024, FR-027; AC5–AC6. |
+| DR-002 High | **Design resolved:** architecture sections 14.1–14.2 define authority per type, directions, drift handling, human-authored ADS bootstrap and exact-write approval. | The integration owner demonstrates the authority matrix, report-before-update ordering and denial of every unapproved application write; retain source, target, digest and decision evidence; FR-018, FR-022–025; AC3, AC5–AC6. |
+| DR-003 High | **Design resolved:** architecture sections 14.2–14.3 define native account ID, role mapping, decision/version/digest binding and owner-approved rollback. | Verify authorized and unauthorized identities, changed proposals, PR head/base and rollback evidence in controlled site tests; fail closed if evidence is unverifiable; FR-021–024, FR-027–029; AC5–AC7. |
+| DR-004 High | **Design resolved; site capability verification transferred:** architecture section 14.2 specifies unique section selection, atomic version guard and preservation. | Demonstrate a concurrent-write conflict, preserved rich content/history and explicit approval for full logical replacement; disable the path if unsupported; FR-024–027, FR-030; AC5–AC6. |
+| DR-005 High | **Design resolved; provider and site validation transferred:** sections 8 and 14.3–14.4 require authenticated events, replay controls, sensitive-data screening and a provider-independent adapter. | Prove sender verification, least-privilege access and input/output screening with rejection tests; record provider terms and actual supported triggers; FR-005, FR-010, FR-019–020; AC1, AC4–AC5. |
+| DR-006 Medium | **Design resolved; integration validation transferred:** section 14.4 specifies complete paginated scans, checkpoints and escalation of unrecoverable history. | Test missed events, pagination, rename, delete, restore, issue links and inaccessible history per source; evidence must distinguish recovered changes from unobservable history; FR-006–010, FR-012; AC1. |
+| DR-007 Medium | **Design resolved:** section 14.3 assigns rule-based and advisory AI suggestions to the impact engine, with evidence and authorized approval before traversal. | Demonstrate pending suggestions do not create approved edges and cyclic traversal terminates with traceable paths; FR-013–016; AC2–AC3. |
+| DR-008 Medium | **Design resolved:** sections 4 and 14.3 define every report field, severity rules, qualitative confidence and missing-data behavior. | Verify all required fields and links, classifications and explanations, and blocking of incomplete reports; FR-016–018; AC3. |
+| DR-009 Medium | **Design resolved:** section 14.3 specifies internal and scoped external identity, owner/reviewer mapping and fail-closed missing ownership. | Verify uniqueness, rename/move identity, unauthorized mappings and owner escalation; FR-002–004, FR-022, FR-031–034; AC1, AC5, AC7. |
+| DR-010 Medium | **Design resolved; crash tests transferred:** sections 7 and 14.4 specify transactional handoff, stable operation IDs, leases and uncertain-write checks. | Demonstrate restart recovery, competing workers, duplicate deliveries and ambiguous external writes without lost work or unsafe replay; FR-010, FR-012, FR-029, FR-033–035; AC1, AC7. |
+| DR-011 Medium | **Design resolved; policy and restore validation transferred:** sections 14.2 and 14.4 specify protected audit, retention controls, version-bound owner approval and safe rollback. | Verify required audit fields and access controls, retention configuration, rollback approval and conflict-safe restore; FR-028–030; AC7. |
+| DR-012 Medium | **Design resolved; provider semantics validation transferred:** section 14.4 distinguishes ambiguous errors, bounded retries, persistent notifications and delivery escalation. | Exercise concealed 404, confirmed missing/permission failures, transient and permanent errors, exhausted retries and failed notifications; FR-031–035; AC7. |
+| DR-013 Medium | **Design resolved; measured targets and operation readiness transferred:** section 14.5 defines workload, measurements, owner approval, hosting, alerts and backup/restore gates. | Retain workload and latency distributions, approved numeric targets and hosting rationale, and successful restore measurements against approved RTO/RPO; NFR-002–003. |
+| DR-014 Low | **Design resolved:** section 14.5 requires Python verification traced to every FR and NFR, including security and failure scenarios. | Produce and execute the later traceability and test evidence; FR-010, FR-023–028, FR-031–035; NFR-001, NFR-005–010; AC5–AC7. |
+| DR-015 Low | **Design resolved:** section 2 distinguishes inbound events from application-initiated REST reads and retains earlier sources. | Verify the diagram and integration boundary against actual adapters and event flow; FR-005, FR-010, FR-020; AC1, AC4. |
+
+### Decisions, ownership and verification gates
+
+The Project Owner / Product Owner, acting as primary technical
+decision-maker, is the project-level owner of the design and of ensuring the
+following work is assigned and accepted. This records responsibility, not a
+claim that a separate engineer, reviewer or service identity has already
+been assigned.
+
+| Later-stage deliverable | Accountable owner | Acceptance and evidence |
+| --- | --- | --- |
+| Step 4 implementation plan | Project Owner / primary technical decision-maker | Plan work and dependencies for every contract and finding above; associate each item with requirements, an implementer, verification and evidence. |
+| Integration and security capability matrix | Project Owner / primary technical decision-maker | Record actual Jira/GitHub/ADS event, identity, OAuth, permission, version-guard, rich-content and history capabilities, provider data terms and reproducible controlled test results. Any failing or unsupported required capability blocks its path. |
+| Python implementation and test traceability | Project Owner / primary technical decision-maker | Demonstrate the specific acceptance evidence for DR-001–DR-012 and DR-014–DR-015 above; trace every FR-001–FR-035, NFR-001–NFR-010 and AC1–AC7 to results. |
+| Operational measurement and recovery record | Project Owner / primary technical decision-maker | Complete all four activities in architecture section 14.5; targets and hosting are selected from measurements and approved before production, with restore tests meeting RTO/RPO. |
+
+The authority direction approved on 2026-11-26 is retained: Jira for
+stories and acceptance criteria, GitHub for version-controlled Markdown and
+supporting files, and ADS for impact reports and recorded design/review
+decisions. Section 14 specifies the remaining direction, conflict handling
+and exact-write approval implementation. Measure-first operational planning,
+the configurable 15-minute reconciliation interval and at most three retries
+after the initial attempt with configurable exponential backoff are retained.
+No numerical SLA, provider capability, hosting choice or recovery test result
+is invented. Organizational or evaluator approvals, if required, are separate.
+
+### Project-level approval and closure record
+
+**Proposed approver:** the Project Owner / Product Owner and primary technical
+decision-maker. **Proposed approval date:** 2026-11-26. The stakeholder's
+explicit approval of this exact final draft is required to make this record
+effective; authorization to perform the task or prior approval of section 11
+alone does not constitute that approval. Until such approval, the status above
+and the closure statement below are draft text, not an accomplished fact.
+
+Upon that explicit approval, **Step 3 — Design Review is Approved and
+Completed** at project level, all 15 design findings have the dispositions
+above, and Step 4 — Implementation Planning may begin. Implementation and
+verification work remains as assigned above; production readiness and any
+additional organizational or evaluator approval are not asserted.

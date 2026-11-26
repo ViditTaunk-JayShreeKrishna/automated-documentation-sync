@@ -1,7 +1,17 @@
 # Architecture: Agentic SDLC - Automated Documentation Sync
 
-**Status:** Proposed - Pending Design Review  
+**Status:** Final design-review draft — effective upon stakeholder approval
+
 **Source:** [Approved requirements](requirements.md), [Jira KAN-1](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-1)
+
+Section 14 is the proposed final decision and implementation contract. It
+supersedes earlier statements in sections 1–13 that describe a design
+decision as proposed, unresolved or awaiting confirmation; those statements
+and diagrams are retained as the reviewed baseline. References to confirming
+site capabilities, permissions, operational measurements and implementation
+tests remain verification conditions, not claims that a capability exists.
+Approval of this exact draft must be recorded before treating section 14 as
+approved or publishing it.
 
 ## 1. Purpose and scope
 
@@ -967,5 +977,227 @@ work; see sections 4–12 and the preserved findings in
 | AC6 | Approved Confluence updates, FR-026–FR-027. |
 | AC7 | Audit and failure handling, FR-029–FR-035. |
 
-This is an architecture proposal for human review. It is not a design review,
-implementation plan or production implementation.
+The preceding alignment records the original reviewed proposal and its
+qualifications. The final proposed design decisions and verification gates
+are recorded in section 14. This is not an implementation plan or evidence
+of a production implementation.
+
+## 14. Final design decisions and implementation contract
+
+This section defines the proposed project-level resolution of DR-001–DR-015
+for approval by the Project Owner / Product Owner, who is also the primary
+technical decision-maker. It refines the approved requirements without
+changing REQ-001 v1.0. Approval permits implementation planning, not deployment
+or a claim that external integrations work. Additional organizational or
+evaluator approvals, if applicable, are not implied. References to the earlier
+unresolved policy in the sequence diagrams indicate the review-time baseline;
+the policy to implement is defined below. Source-specific support for it must
+still be verified.
+
+### 14.1 Authority, scope and synchronization direction
+
+The configured repository is
+`ViditTaunk-JayShreeKrishna/automated-documentation-sync`, with
+`feature/automated-documentation-sync` as the initial tracked project branch.
+Administrators may change the tracked scope through authenticated, audited
+configuration; `main` is never an automatic write target. Each registered
+artefact has exactly one authoritative system and an explicit mirror mapping.
+An unmapped type or target is blocked and reported, never guessed.
+
+| Artefact | Authority | Permitted direction and conflict rule |
+| --- | --- | --- |
+| Business requirements, Jira stories, acceptance criteria, issue metadata and issue links | Jira KAN | Read Jira to derive proposals for registered GitHub or ADS mirrors. Never change Jira from a documentation mirror; human changes to Jira follow Jira's own authorization. |
+| Version-controlled Markdown deliverables, including requirements, architecture, design review, plans, verification and PR documentation, plus source, tests, configuration and diagram files | GitHub tracked branch | GitHub committed content is authoritative for the registered ADS document mirror. ADS edits are detected and reviewed as proposals, not silently pushed to GitHub. Repository changes use a human-reviewed GitHub PR workflow. |
+| Impact reports and recorded design/review decisions as operational records | Confluence ADS | Create and maintain the authoritative records in ADS using the approval path below. Any required Markdown summary in GitHub is a distinct, registered representation and follows the GitHub PR and approval workflow; it is not allowed to overwrite the ADS record. |
+| Generated proposals, dependency suggestions, workflow state, synchronization evidence and audit | Application database | Store as operational records, not an authority for source content; approved dependencies are authoritative for application traversal. Publish registered reports and review evidence to ADS only through the specified approval path. |
+| An unregistered or unclassified artefact | None | Block publication, notify the administrator and require an explicit registration and authority mapping before processing it. |
+
+Authority applies to the underlying fact as well as the file: Jira controls
+story and business-requirement facts reproduced in Markdown, and ADS controls
+recorded decisions reproduced in Markdown. GitHub controls the versioned
+document as a whole and its other contents, but cannot override those
+authoritative facts. A disagreement creates a reviewed correction proposal
+for the relevant representation; it does not authorize an automatic edit to
+Jira or ADS or make a conflicting Markdown statement authoritative.
+
+Registered pairs record the last successfully synchronized source and target
+versions and content hashes. If only the authoritative source changes, create
+a proposal for the mirror. If only the mirror changes, do not overwrite it:
+record drift and ask the owner to accept a proposal or reconcile it manually.
+If both changed since the common baseline, or an identity, section or version
+is ambiguous, pause the target and show both changes and versions. Re-read,
+regenerate against current versions and obtain fresh approval before writing;
+never silently choose a winner. Different targets continue independently
+(FR-023–FR-027, FR-035, NFR-005).
+
+### 14.2 Approval, report bootstrap and version-guarded writes
+
+Review of document proposals occurs in ADS; repository changes use GitHub
+pull requests (FR-022). Every application-initiated cross-system write,
+including creation or editing of reports, review records, PRs and document
+mirrors, requires prior human approval of that exact write (FR-023). The
+bootstrap is deliberately manual: an authenticated authorized person reads
+the application-generated report or proposal and directly authors the first
+review record in the designated ADS location. The application does not
+silently create this record; it reads and verifies the native ADS author and
+revision. A human-authorized report write may then publish the exact report
+under Impact Analysis. The published report must exist and be linked before
+any affected document update is published (FR-017–FR-018).
+
+For each application write, an authorized owner or designated reviewer
+records an explicit decision in ADS referencing the immutable proposal ID,
+revision and content digest; source artefact ID and version; target system,
+ID or intended parent and target version or absence; exact content or
+section diff; action type; and the intended write. The system retrieves the
+decision from ADS using an authenticated API and verifies the provider's
+account ID, decision revision and timestamp against the project-maintained
+document-owner or delegated-reviewer mapping. A display name, model response
+or PR event alone is not evidence. Approval of a report or review write is
+separate from approval of each document update. No bulk or standing approval
+is inferred.
+
+Before publication, revalidate the evidence, reviewer's authority, digest,
+source and target versions, and service identity permissions. Rejection
+records the reason and prevents the write. An edited proposal requires fresh
+approval; a stale source, changed target or version conflict requires
+regeneration from the latest state and fresh approval. A human-made ADS
+review entry is the record of that human action, not an application-generated
+write exempted from FR-023. If reliable native identity, content revision,
+role mapping, section selection, or an atomic version guard is unavailable,
+the affected automated write is disabled and the owner is notified.
+
+For GitHub, a person creates and reviews the PR; the application reads the PR
+base, head, exact diff and relevant approval evidence and does not create,
+push or merge the PR automatically in the initial workflow. A new head,
+changed base or altered diff invalidates matching evidence. Any future
+application-initiated GitHub write must separately satisfy the exact-write
+approval rule before it is enabled. Never treat an unmerged PR as the tracked
+branch's authoritative content.
+
+For ADS, read the supported rich representation and page version, identify
+the intended section uniquely, and apply a supported atomic version-guarded
+write. Preserve all unrelated content, formatting, tables, links, embeds,
+attachments and history. Compare the resulting content and version with the
+approved change and preservation baseline. A full logical replacement
+requires explicit approval (FR-027); use of a full-body transport alone does
+not make a section edit a full logical replacement. If preservation or the
+atomic guard cannot be demonstrated, do not publish.
+
+An authorized document owner separately approves a rollback bound to the
+target, current version, previous approved version and exact restoration
+scope. Recheck permissions and current version before restoring; preserve
+history, record the actor and outcome, and stop on conflict. Approval capture
+and supported ADS version operations must be verified before enabling either
+automated publication or rollback (FR-028–FR-030).
+
+### 14.3 Identity, dependency, impact and AI contracts
+
+The registry uses an internal immutable UUID and a unique tuple of system,
+configured scope and stable external ID. Record the FR-004 fields, owner
+account ID and designated reviewer account IDs in an administrator-managed,
+audited mapping; resolve them against the provider account identity before
+privileged actions. Paths and titles are attributes, not identity. Rename or
+move updates the same record only when stable identity is confirmed; deletion,
+inaccessible content and uncertain identity are distinct states. Unknown
+ownership blocks approval and triggers administrator escalation.
+
+The Impact Analysis Engine proposes candidate directed dependencies from
+explicit references, registered IDs and links, supplemented by advisory AI
+suggestions. Persist source, target, type, evidence and uncertainty. Only
+authorized members can approve or modify a candidate; only approved edges
+drive graph traversal. Detect cycles, record the path and visit each node at
+most once per analysis; AI-only possible impacts remain separately marked.
+
+Validate all FR-017 fields and source links before report publication.
+Classify severity deterministically: **High** when a supported impact may
+change requirements, security, approval or externally visible behavior;
+**Medium** for other supported impacts on design, implementation or
+verification; **Low** for presentation or non-behavioral documentation
+changes. When evidence cannot establish the category, use High and explain
+the uncertainty rather than inventing certainty. Confidence is qualitative:
+**High** for a verified direct registered relationship and matching change;
+**Medium** for a verified indirect path; **Low** for an AI-only suggestion
+or incomplete evidence. Record the basis; these labels are not probabilities.
+Do not fabricate missing identifiers, links or timestamps; block and report
+an incomplete report (FR-014–FR-018, NFR-004).
+
+Use the provider-independent Python interface and reject unvalidated output.
+Only explicitly authorized, relevant context may enter the adapter. Exclude
+secrets, credentials, environment files and sensitive personal information;
+screen both input and output and fail closed when safety cannot be
+established. Select a provider only after verifying its retention, access,
+processing and data-handling terms against the project policy. AI cannot
+grant permissions or approve writes (FR-019–FR-020, NFR-009–NFR-010).
+
+### 14.4 Event, recovery, audit and operational contract
+
+Persist accepted events and durable work atomically before acknowledgment,
+deduplicate by source event and target operation IDs, and protect claims with
+database leases. Verify source-specific webhook authenticity, replay handling
+and event coverage; reject unverifiable input. Reconciliation scans all
+pages from durable source checkpoints, compares identities, versions and
+links, and advances a checkpoint only after a complete successful scan.
+Run it every 15 minutes by default, configurable. Record and escalate missing
+or inaccessible history; do not claim that a current-state scan reconstructed
+unobservable intermediate events (FR-005–FR-012, NFR-001).
+
+Use a maximum of three retries after the initial attempt with configurable
+exponential backoff for confirmed transient failures; record every attempt.
+For an uncertain external write, read the target and correlate the operation
+before any retry; if its outcome cannot be proven, stop and escalate.
+Distinguish confirmed missing pages, permission failures and ambiguous 404s;
+never create a replacement automatically. Persist an in-application
+notification and alert the configured owner or administrator through the
+configured operational channel; record failed delivery and escalate to the
+administrator. A missing channel or owner is an explicit blocking
+configuration error, not a successful notification (FR-029–FR-035).
+
+Protect audit records and before/after content with least-privilege access,
+encryption in transit and at rest, and configurable retention consistent
+with organizational policy. Store source/target versions, proposal digest,
+review identity and decision, attempts, results, privileged actions and
+rollback evidence. Preserve required FR-029 content while excluding secrets
+and sensitive personal information from logs, reports and generated output.
+If policy prevents retaining required evidence, block the affected operation
+and escalate rather than silently dropping it.
+
+### 14.5 Measure-first operations and later verification
+
+The initial architecture is the Python API and worker with PostgreSQL
+described above. The project adopts a measure-first process rather than
+inventing an SLA. The Project Owner / primary technical decision-maker owns
+the following deliverables, to be planned in Step 4 and executed before
+production:
+
+1. Define and record a representative workload profile: event types and
+   rates, bursts, registered artefact and dependency counts, target fan-out,
+   concurrency, payload sizes and failure conditions. Record the fixture,
+   environment and sampling method so runs can be repeated.
+2. Measure and retain event throughput, queue depth and oldest-job age;
+   detection-to-report and post-approval publication latency distributions
+   including p50, p95 and maximum; error, retry and reconciliation outcomes;
+   and resource utilization. Include normal, burst, dependency outage and
+   recovery runs. Report units, duration, workload and raw results.
+3. Use those results to select hosting and capacity and record explicit,
+   measurable availability and latency targets, backup retention, RTO and
+   RPO, including the owner's approval and rationale. Until then there is no
+   approved numeric SLA. Configure monitoring and alert thresholds against
+   the approved targets; the 15-minute interval is not an availability SLA.
+4. Take a backup containing identifiable test records and a timestamped
+   recovery marker; restore into an isolated environment, verify registry,
+   dependencies, work and audit records and measure elapsed recovery time and
+   the gap between the latest committed marker and restored marker. Compare
+   observed recovery time and data loss to the approved RTO and RPO. Repeat
+   after a configuration change; retain backup, restore and comparison
+   evidence under the applicable retention policy.
+
+Acceptance requires reproducible measurements, owner-approved targets and
+hosting rationale, alerts tied to those targets, and a successful restoration
+meeting the approved RTO/RPO. A failing run or missing target blocks
+production readiness and remains visible; it does not retroactively invalidate
+document review. Later Python unit tests and controlled site integration tests
+must exercise every FR and NFR, including per-target approvals, stale
+regeneration, simultaneous writes, denial, partial failure, duplicates,
+missed events, replay, recovery, sensitive-data screening and rollback.
+Evidence must link each requirement to a test and observed result. No such
+test or integration capability is asserted by this design.

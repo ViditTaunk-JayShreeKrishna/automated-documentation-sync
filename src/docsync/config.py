@@ -96,12 +96,16 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     )
 
 
-def main() -> None:
+def require_settings() -> Settings:
     try:
-        load_settings()
+        return load_settings()
     except ConfigurationError as error:
         print(f"Configuration error: {error}", file=sys.stderr)
         raise SystemExit(1) from None
+
+
+def main() -> None:
+    require_settings()
     print("Configuration is valid; integration permissions have not been verified.")
 
 

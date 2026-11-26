@@ -39,6 +39,12 @@ def test_overrides_within_safe_limits(env: dict[str, str]) -> None:
     assert settings.retry_backoff_seconds == 0.5
 
 
+@pytest.mark.parametrize("environment", ["development", "test", "production"])
+def test_environment_selection(env: dict[str, str], environment: str) -> None:
+    env["DOCSYNC_ENVIRONMENT"] = environment
+    assert load_settings(env).environment == environment
+
+
 @pytest.mark.parametrize(
     ("name", "value"),
     [

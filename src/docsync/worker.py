@@ -4,11 +4,16 @@ import logging
 import signal
 import threading
 
+from docsync.config import Settings, require_settings
+
 logger = logging.getLogger(__name__)
 
 
-def run(stop_event: threading.Event) -> None:
-    logger.info("Worker started; job processing and scheduling are not implemented.")
+def run(stop_event: threading.Event, settings: Settings) -> None:
+    logger.info(
+        "Worker started in %s; job processing and scheduling are not implemented.",
+        settings.environment,
+    )
     while not stop_event.wait(timeout=1):
         pass
     logger.info("Worker stopped.")
@@ -16,6 +21,7 @@ def run(stop_event: threading.Event) -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    settings = require_settings()
     stop_event = threading.Event()
 
     def request_stop(signum: int, frame: object) -> None:
@@ -23,7 +29,7 @@ def main() -> None:
 
     signal.signal(signal.SIGINT, request_stop)
     signal.signal(signal.SIGTERM, request_stop)
-    run(stop_event)
+    run(stop_event, settings)
 
 
 if __name__ == "__main__":

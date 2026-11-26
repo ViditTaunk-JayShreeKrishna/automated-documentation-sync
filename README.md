@@ -40,9 +40,10 @@ not actual permissions or token validity.
 The initial Jira project, repository, branch and Confluence space are restricted
 to the approved scope. Audited scope changes are not implemented yet.
 
-The current API and idle worker do not load these settings or connect to
-external systems. Future integrations must validate configuration before use;
-the checker does not enable them or verify their security.
+The API and worker validate configuration before starting; invalid settings or
+missing tokens stop startup. The API also validates when started through an
+ASGI server directly. Neither process connects to external systems yet:
+validating token presence does not enable integrations or verify permissions.
 
 ## Run
 

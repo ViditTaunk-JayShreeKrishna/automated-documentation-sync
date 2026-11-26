@@ -513,3 +513,135 @@ failure/recovery and deployment diagrams remain unchanged. Review of the
 corrected documentation, integration capability validation and the open
 decisions above are still required before an architecture approval or
 implementation planning decision.
+
+## 10. Final corrective-action assessment
+
+This assessment reviews the corrected architecture at Git commit
+`a11fc3ad865dd58071bab322f6510399df4f5d82` against REQ-001 v1.0, KAN-1
+and the original findings above. It preserves the original review and
+section 9 as historical evidence. Documentation corrections describe
+proposed behavior; they do not prove implementation, site capabilities or
+production readiness. The review remains **Review Completed – Pending
+Stakeholder Approval**.
+
+### Executive summary and finding reassessment
+
+Four findings have their requested documentation corrections in the
+architecture, nine are partially addressed, and two remain open. The
+partially addressed and open findings require the decisions, additional
+design detail or capability checks below. Even where a documentation
+correction is complete, the corresponding behavior must be verified later.
+The relevant requirement and acceptance-criterion mappings in section 5 and
+architecture section 13 remain applicable.
+
+| Finding and original severity | Current assessment and architecture evidence | Remaining corrective action, confirmation or validation |
+| --- | --- | --- |
+| DR-001 High | Documentation correction present: section 6 separates edited proposals from stale/conflict regeneration and reapproval. | Verify regeneration against current versions and fresh approval; FR-023-024, FR-027; AC5-AC6. |
+| DR-002 High | Open: sections 5.3, 6 and 12 leave authority and report/review authorization unresolved. | Identify authorized decision-makers and confirm per-type authority, direction and approval-compliant ADS report and review writes; FR-018, FR-022-025; AC3, AC5-AC6. |
+| DR-003 High | Partial: sections 6-7 document version-bound evidence and fail-closed checks. | Specify and verify reviewer and owner identity, ADS and PR evidence, rejection and rollback approval capture; FR-021-024, FR-027-029; AC5-AC7. |
+| DR-004 High | Partial: section 5.3 documents guarded section updates and preservation. | Verify supported atomic version guards, stable section selection, rich-content preservation and conflict behavior; FR-024-027, FR-030; AC5-AC6. |
+| DR-005 High | Partial: sections 8 and 10 exclude sensitive AI context and require verified senders. | Confirm and validate sender authentication, replay controls, scopes, screening and provider data handling; FR-005, FR-010, FR-019-020; AC1, AC4-AC5. |
+| DR-006 Medium | Partial: section 9 specifies checkpoints and acknowledges unrecoverable history. | Verify history, pagination and lifecycle coverage for each source and resolve gaps against FR-006-010 and FR-012 without weakening requirements; AC1. |
+| DR-007 Medium | Documentation correction present: section 4 assigns dependency suggestions and pending review. | Confirm the suggestion method and reviewer identity; verify evidence and authorized approval; FR-013-016; AC2-AC3. |
+| DR-008 Medium | Partial: section 4 maps report fields and source links. | Confirm explainable severity and confidence methods and report-write authorization; validate complete reports; FR-016-018; AC3. |
+| DR-009 Medium | Partial: section 4 lists registry fields and blocks owner-dependent actions when ownership is unknown. | Confirm the authoritative owner/identity source and validate identity mappings; FR-002-004, FR-022, FR-031-034; AC1, AC5, AC7. |
+| DR-010 Medium | Partial: section 7 describes durable handoff, leases, attempts and uncertain writes. | Detail recovery state transitions and verify crash, concurrency, duplicate and ambiguous-write cases; FR-010, FR-012, FR-029, FR-033-035; AC1, AC7. |
+| DR-011 Medium | Partial: section 7 describes protected audit and rollback evidence. | Confirm retention and approval capture; verify protected evidence and conflict-safe restoration; FR-028-030; AC7. |
+| DR-012 Medium | Partial: section 9 distinguishes errors and identifies recipients and retry limits. | Verify source-specific error semantics and confirm notification/escalation channels, including delivery failure; FR-031-035; AC7. |
+| DR-013 Medium | Open: section 11 calls for workload measurement and leaves hosting and targets unresolved. | Measure representative workload, then confirm operational objectives, capacity, hosting and recovery arrangements; NFR-002-003. |
+| DR-014 Low | Documentation correction present: section 11 lists later Python verification considerations. | Develop and execute the later verification work; no test plan or tests are claimed complete; FR-010, FR-023-028, FR-031-035; AC5-AC7. |
+| DR-015 Low | Documentation correction present: section 2 distinguishes incoming events from application-initiated REST reads. | Maintain diagram/source consistency and validate actual integration behavior later; FR-005, FR-010, FR-020; AC1, AC4. |
+
+### DR-002: authority and publication decisions
+
+**Pending Stakeholder Confirmation:** the Project Owner / Product Owner is
+the proposed business decision-maker for ownership, source-of-truth rules
+and publication authorization. The Technical Lead / Solution Architect is
+the proposed technical decision-maker for architecture, security,
+integrations and operations. These responsibilities are not confirmed
+appointments. No named approver, document owner or reviewer identity is
+established by the available artefacts; authorship does not establish
+authority.
+
+The approved requirements already make Jira authoritative for business
+requirements, user stories and acceptance criteria. For stakeholder
+consideration, the recommended remaining mapping is GitHub for committed
+Markdown deliverables and associated files, and ADS for impact reports and
+recorded review decisions. Under that recommendation, ADS edits to mirrored
+documents would become reviewable proposals rather than silent GitHub
+overwrites. An ADS-authoritative or other per-type mapping is an alternative:
+native editing may be simpler, but its source selection, approval, conflict
+handling and GitHub synchronization require explicit rules. No remaining
+mapping or synchronization direction is approved by this assessment.
+
+For report and review artefacts, one recommended option is for an authorized
+human to approve each exact cross-system write before it occurs, binding
+approval to content and relevant versions. A separately specified manual
+ADS-authored workflow is an alternative. Both must satisfy FR-018 and
+FR-022-023; neither assumes an exception to human approval or replaces
+review in ADS. The approval and evidence mechanism remains unconfirmed.
+
+Stakeholders must confirm the complete per-type mapping and permitted
+directions; who may authorize each report, review and document update;
+how approval is captured and bound to the exact content and versions; and
+how report creation and review in ADS operate without bypassing FR-023.
+Until then, do not automate the affected writes.
+
+### DR-013: measure-first operational planning
+
+Adopt a measure-first planning approach: assess representative workload
+before agreeing hosting, capacity, availability, backup retention, recovery
+time objective (RTO) and recovery point objective (RPO). Measure relevant
+event volume, concurrency, backlog and detection-to-report and post-approval
+publication latency, and assess backup and restoration needs. Hosting,
+capacity, availability, throughput, concurrent projects, retention, RTO and
+RPO have no formally approved numerical targets in the available artefacts.
+Measurement does not itself approve a deployment or an operational SLA.
+
+The recommended initial option is the proposed single Python worker and
+scheduler if measurements support it; multiple workers are an alternative
+when justified, with additional lease, scheduler coordination and operational
+complexity. Hosting and recovery options require technical recommendation and
+stakeholder confirmation after measurement.
+
+The existing configurable 15-minute reconciliation interval and maximum
+three retries after the initial attempt with configurable exponential backoff
+remain constraints. They are not a complete SLA.
+
+### Integration validation and residual risk
+
+Before asserting implementation capability, validate Jira and GitHub
+webhook events, authentication, permissions, history and pagination;
+Confluence Automation lifecycle triggers, authentication, review evidence,
+version-guarded writes and rich-content preservation; identity and document
+owner mappings; and provider data handling. Exercise duplicate and missed
+events, ambiguous errors and writes, stale approvals, concurrent edits,
+restart recovery, notification failure and owner-approved rollback. The
+existing Confluence documentation synchronization demonstrates only the
+specific manual operations performed, not the application's future
+integration or security capabilities.
+
+Unapproved or stale publication remains a high risk until identity,
+authority, evidence and guarded writes are confirmed. Sensitive-data exposure
+remains a high risk until screening and provider controls are validated.
+Missed changes, duplicate or ambiguous writes, incomplete audit and
+operational shortfalls remain risks until the corresponding recovery,
+integration and workload checks are completed. Record owners and evidence
+for each outstanding action rather than treating a written design as proof.
+
+### Proposed closure criteria and document changes
+
+For stakeholder consideration, close Step 3 only after an authorized
+stakeholder reviews the finding assessment, confirms the relevant authority
+and approval decisions, and accepts the corrected architecture and any
+explicitly tracked outstanding verification actions with owners. Validate
+required integration capabilities at the appropriate stage; neither design
+review closure nor approval of a documented correction is production
+readiness. Do not waive approved requirements or start implementation
+planning solely because this assessment is recorded.
+
+Update this review with confirmed decisions and evidence through the
+approved documentation synchronization workflow. Change the architecture
+only where a necessary correction has been reviewed and approved; preserve
+its content, diagrams and requirements baseline. Open decisions remain
+pending until an authorized stakeholder is identified and confirms them.

@@ -24,6 +24,26 @@ On systems without the `py` launcher, use `python3.12 -m venv .venv`, or the
 path to a compatible Python interpreter. On macOS or Linux, activate with
 `source .venv/bin/activate`.
 
+## Configuration validation
+
+`python -m docsync.config` validates environment settings without printing
+their values. Supply `DOCSYNC_JIRA_ACCESS_TOKEN`, `DOCSYNC_GITHUB_ACCESS_TOKEN`
+and `DOCSYNC_CONFLUENCE_ACCESS_TOKEN` through the process environment; do not
+commit them or put them in documentation. Use least-privilege OAuth access
+tokens provisioned for the intended environment. Validation checks presence,
+not actual permissions or token validity.
+
+`DOCSYNC_ENVIRONMENT` accepts `development` (default), `test` or `production`.
+`DOCSYNC_RECONCILIATION_SECONDS` defaults to 900 and must be positive;
+`DOCSYNC_MAX_RETRIES` defaults to 3 and must be between 0 and 3;
+`DOCSYNC_RETRY_BACKOFF_SECONDS` defaults to 1 and must be positive and finite.
+The initial Jira project, repository, branch and Confluence space are restricted
+to the approved scope. Audited scope changes are not implemented yet.
+
+The current API and idle worker do not load these settings or connect to
+external systems. Future integrations must validate configuration before use;
+the checker does not enable them or verify their security.
+
 ## Run
 
 In separate activated terminals:

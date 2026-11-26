@@ -46,7 +46,7 @@ opposite direction. The view matters because it exposes the approval boundary
 and shared durable state without implying separate services for each component.
 
 <details>
-<summary>Original component diagram source (preserved)</summary>
+<summary>Original component diagram source (preserved; superseded)</summary>
 
 ```mermaid
 flowchart LR
@@ -89,13 +89,20 @@ flowchart LR
 
 </details>
 
-The grouped view below depicts the same components and relationships. Repeated
+The original source above is historical: its combined event/REST arrow labels
+do not accurately distinguish request direction. The corrected grouped view
+below retains the original components and relationships while showing
+application-initiated REST requests and their responses separately from events.
+Repeated
 labels in different groups represent the same logical component or external
 system, not additional services, databases or integrations. The groups
 separate processing, external communication, storage and auditing to make
 individual connections easier to follow.
 
-```mermaid
+<details>
+<summary>Previous grouped component diagram source (preserved; superseded)</summary>
+
+```text
 flowchart TB
     subgraph Flow["Python application: processing and approval"]
         direction TB
@@ -154,6 +161,74 @@ flowchart TB
     State ~~~ AuditFlow
 ```
 
+</details>
+
+```mermaid
+flowchart TB
+    subgraph Flow["Python application: processing and approval"]
+        direction TB
+        Receiver["Webhook Receiver"] --> Change["Change Detection Service"]
+        API["API and review interface"] --> Change
+        Scheduler["Reconciliation Scheduler"] --> Change
+        Change --> Jobs["Durable work records"]
+        Jobs --> Impact["Impact Analysis Engine"]
+        Registry["Artefact Registry"] <--> Impact
+        Deps["Dependency Registry"] <--> Impact
+        Impact --> Reports["Impact reports"]
+        Impact --> Generator["AI Proposal Generator"]
+        Generator --> Approval["Approval Management"]
+        Approval --> Sync["Synchronization Engine"]
+    end
+
+    subgraph Inbound["External inputs"]
+        direction LR
+        JiraIn["Jira KAN"] -->|webhooks| ReceiverIn["Webhook Receiver"]
+        GitHubIn["GitHub repository"] -->|webhooks| ReceiverIn
+        ConfIn["Confluence ADS"] -->|Automation web requests| ReceiverIn
+        Users["Authorized users"] -->|HTTPS| APIIn["API and review interface"]
+    end
+
+    subgraph Reads["Application-initiated REST reads"]
+        direction LR
+        Adapter["Integration adapters"] -->|REST requests| Sources["Jira KAN, GitHub and Confluence ADS"]
+        Sources -->|responses| Adapter
+    end
+
+    subgraph Outbound["External interactions"]
+        direction LR
+        GeneratorOut["AI Proposal Generator"] -->|provider adapter| AI["Runtime AI provider"]
+        ImpactOut["Impact Analysis Engine"] -->|approved report publication policy| ConfReport["Confluence ADS"]
+        ApprovalOut["Approval Management"] <-->|review evidence| ConfReview["Confluence ADS"]
+        SyncOut["Synchronization Engine"] -->|approved page updates| ConfUpdate["Confluence ADS"]
+        SyncRepo["Synchronization Engine"] -->|approved repository workflow| GitHubOut["GitHub repository"]
+        AuditOut["Audit and Rollback Manager"] -->|authorized, approved rollback| ConfRollback["Confluence ADS"]
+    end
+
+    subgraph State["Shared durable state"]
+        direction LR
+        JobsDB["Durable work records"] <--> DB[("PostgreSQL")]
+        RegistryDB["Artefact Registry"] <--> DB
+        DepsDB["Dependency Registry"] <--> DB
+        ReportsDB["Impact reports"] <--> DB
+        ApprovalDB["Approval Management"] <--> DB
+        AuditDB["Audit and Rollback Manager"] <--> DB
+    end
+
+    subgraph AuditFlow["Audit connections"]
+        direction LR
+        ChangeAudit["Change Detection Service"] --> Audit["Audit and Rollback Manager"]
+        ImpactAudit["Impact Analysis Engine"] --> Audit
+        ApprovalAudit["Approval Management"] --> Audit
+        SyncAudit["Synchronization Engine"] --> Audit
+    end
+
+    Flow ~~~ Inbound
+    Inbound ~~~ Reads
+    Reads ~~~ Outbound
+    Outbound ~~~ State
+    State ~~~ AuditFlow
+```
+
 ![Component architecture diagram](component-architecture.png)
 
 Arrows show logical communication, not independent deployable services. All
@@ -194,6 +269,45 @@ scopes, runtime AI provider and retention periods remain to be decided.
 | **Audit and Rollback Manager** | Persists required change, proposal, decision, version, failure, retry and privileged-action records; coordinates restoration of a previous approved version after authorized document-owner approval; and records the rollback. |
 | **Integration adapters** | Encapsulate source-specific authentication, API calls, pagination, version checks and error classification. They return normalized results to the application and do not decide approval or authority policy. |
 | **API and review interface** | Authenticates users, enforces RBAC, offers manual registration, discovery and synchronization controls, and presents status and review links. The precise ADS review and GitHub approval integration is unresolved. |
+
+### Registry and dependency suggestion contracts
+
+The artefact registry records each entry's unique internal ID, name, type,
+source system and source-system ID, URL or repository path, current version
+or last-modified timestamp, related document IDs and dependencies, last
+detected change timestamp, and last successful synchronization status
+(FR-004). Each document needs an identifiable owner. If ownership cannot be
+established, record the gap, surface it for resolution and do not authorize
+an owner-dependent action. The authoritative identity source remains open.
+
+The Impact Analysis Engine is the proposed owner of artefact analysis for
+dependency suggestions. It records each proposed source, dependent,
+relationship type, supporting evidence and uncertainty as a pending suggestion
+in the Dependency Registry. Authorized members review, approve or modify
+suggestions; changes are audited. Only approved dependencies participate in
+recorded-dependency traversal; AI-suggested additional impacts remain
+advisory. The precise suggestion method and reviewer identity source remain
+unresolved.
+
+### Impact report contract
+
+Before any proposed document update is published, generate and validate a
+report containing every FR-017 field:
+
+| Report field | Proposed source |
+| --- | --- |
+| Change ID, timestamp, source artefact, source identifier and change summary | Recorded normalized change and Artefact Registry |
+| Affected document IDs, titles and links | Artefact Registry and authorized source reads |
+| Reason for impact, direct or indirect dependency path and recommended action | Impact Analysis Engine and approved Dependency Registry |
+| High, Medium or Low severity and explanation, confidence level and synchronization status | Impact Analysis Engine and recorded target status |
+| Relevant Jira issue, GitHub commit or pull request link | Authorized source event and integration metadata |
+
+Store reports under the dedicated ADS Impact Analysis section when authorized
+under the still-unresolved cross-system publication policy. Rule-based
+severity must include an explanation; the exact classification rules and
+confidence method require confirmation. Do not invent numerical thresholds.
+If required report data or classification is unavailable, surface the gap
+instead of fabricating a value.
 
 ## 5. Integrations and source boundaries
 
@@ -239,6 +353,27 @@ unresolved; no automatic report or review-page write should bypass the
 cross-system approval rule. The mechanism for capturing and validating
 Confluence review decisions must be confirmed.
 
+### Version-guarded section updates
+
+The proposed Confluence adapter reads the current supported rich-content
+representation, page version and the affected section. It verifies the
+proposal, authorized reviewer, source and target versions, and the intended
+section against the approved evidence immediately before publication.
+Use a supported conditional or version-guarded write, not a read alone, to
+protect against concurrent edits. Modify only approved affected sections,
+preserving unrelated content, tables, links, embeds and page history. Validate
+the resulting version, intended change and preservation after the write.
+On a mismatch or ambiguous section identity, pause the target and surface the
+conflict; regenerate against current versions and obtain fresh approval.
+
+The exact site-supported representation, section identification and
+conditional-write mechanism require integration validation. If safe
+preservation or an atomic version guard cannot be established, do not
+publish. A full logical page replacement requires explicit approval under
+FR-027; full-body API transport alone does not determine the logical scope.
+ADS report and review publication and approval capture remain subject to the
+unresolved decisions in section 12.
+
 ## 6. End-to-end data flow
 
 ### End-to-end data-flow diagram
@@ -249,7 +384,10 @@ Arrows show the progression; the rejection branch stops publication, while
 edits, staleness and conflicts return to review. It matters because every
 path to a document update passes the approval and version-check boundary.
 
-```mermaid
+<details>
+<summary>Previous data-flow diagram source (preserved; superseded)</summary>
+
+```text
 flowchart TD
     A["Webhook, manual check or 15-minute reconciliation"] --> B["Validate, scope and record event"]
     B --> C["Compare versions and relevant changed fields or files"]
@@ -263,6 +401,33 @@ flowchart TD
     J --> H
     H -->|approve| K["Recheck authority, permissions, versions and approval"]
     K -->|conflict| J
+    K -->|valid| L["Publish approved update per target"]
+    L --> M["Record result, versions and audit history"]
+    M --> N["Reconcile later and suppress self-generated loops"]
+```
+
+</details>
+
+In the corrected view, proposal edits and stale or conflicting versions
+follow distinct paths. Stale or conflicting proposals must be regenerated
+against the latest versions and reapproved; edits also require reapproval.
+
+```mermaid
+flowchart TD
+    A["Webhook, manual check or 15-minute reconciliation"] --> B["Validate, scope and record event"]
+    B --> C["Compare versions and relevant changed fields or files"]
+    C --> D["Deduplicate; record change and durable work"]
+    D --> E["Traverse dependencies and assess potential impacts"]
+    E --> F["Prepare impact report with reasons and links"]
+    F --> G["Generate section-level proposal with source and target versions"]
+    G --> H["Authorized human review"]
+    H -->|reject| I["Record reason; do not change document"]
+    H -->|edited proposal| J["Record revision; request reapproval"]
+    J --> H
+    H -->|stale| S["Regenerate against latest versions; request reapproval"]
+    S --> H
+    H -->|approve| K["Recheck authority, permissions, versions and approval"]
+    K -->|stale or conflict| S
     K -->|valid| L["Publish approved update per target"]
     L --> M["Record result, versions and audit history"]
     M --> N["Reconcile later and suppress self-generated loops"]
@@ -287,7 +452,8 @@ flowchart TD
 5. An authorized owner or designated reviewer reviews each proposal in the
    agreed ADS workflow; repository changes use a GitHub pull request. Approval
    is tied to the exact proposal and versions. Rejection records the reason;
-   edits or staleness require a revised proposal and fresh approval.
+   edits require fresh approval. Staleness requires regeneration using the
+   latest versions and fresh approval.
 6. Before publishing, the synchronization engine checks authority, the
    reviewer decision, source and target versions and permissions. It updates
    only approved sections of registered ADS pages, or follows the approved
@@ -297,6 +463,17 @@ flowchart TD
    content, versions, outcome and errors. Other eligible targets continue if
    one fails. Reconciliation and loop suppression prevent missed or repeated
    work from becoming silent inconsistencies.
+
+Approval evidence must identify the target, exact proposal and source/target
+versions, the authenticated reviewer, decision and any rejection reason.
+Recheck the reviewer's authority for that target before publication; an
+edited proposal invalidates its prior approval. A stale proposal or version
+conflict requires regeneration using the latest versions and fresh approval.
+Owner-approved rollback must likewise bind approval to the intended previous
+version and current target state. If identity, authorization or evidence
+cannot be verified, stop the affected write. How ADS decisions, GitHub pull
+request approvals and rollback approvals are captured and linked remains
+unresolved; a PR event alone is not proof of document-specific approval.
 
 ### Jira, GitHub and Confluence interaction sequence
 
@@ -309,7 +486,10 @@ is conditional on the unresolved authorization policy, and the precise review
 mechanism is not assumed. This view matters because it distinguishes source
 events, contextual reads and controlled writes across system boundaries.
 
-```mermaid
+<details>
+<summary>Previous interaction sequence source (preserved; superseded)</summary>
+
+```text
 sequenceDiagram
     participant Jira as Jira KAN
     participant GitHub as GitHub repository
@@ -351,6 +531,58 @@ sequenceDiagram
     end
 ```
 
+</details>
+
+The corrected sequence separates rejection, edited proposals, and stale or
+conflicting versions. The latter require regeneration from the latest
+versions and fresh approval.
+
+```mermaid
+sequenceDiagram
+    participant Jira as Jira KAN
+    participant GitHub as GitHub repository
+    participant ADS as Confluence ADS
+    participant App as Python application
+    participant AI as Runtime AI provider
+    actor Reviewer as Authorized reviewer
+
+    alt Relevant Jira change
+        Jira->>App: Webhook event
+    else Relevant GitHub change
+        GitHub->>App: Webhook event
+    else Relevant Confluence change
+        ADS->>App: Automation web request, where supported
+    end
+    App->>Jira: Read relevant requirements and versions
+    Jira-->>App: Authorized issue context
+    App->>GitHub: Read relevant files, commits or PRs
+    GitHub-->>App: Authorized repository context
+    App->>ADS: Read registered pages and versions
+    ADS-->>App: Authorized document context
+    App->>App: Detect change, analyze dependencies and prepare report
+    App->>AI: Request impact assistance and proposal
+    AI-->>App: Advisory output
+    App->>App: Store pending proposal
+    opt Report or review publication is authorized under the resolved policy
+        App->>ADS: Make report or proposal available for review
+    end
+    Reviewer->>ADS: Review proposal
+    ADS-->>App: Review evidence, mechanism to be confirmed
+    alt Rejected
+        App->>App: Record rejection and reason without publishing
+    else Proposal edited
+        App->>App: Record revision and request fresh approval
+    else Stale proposal or version conflict
+        App->>App: Regenerate against latest versions and request fresh approval
+    else Approved and versions still match
+        App->>ADS: Publish approved affected sections
+        opt Repository update authorized under resolved policy
+            App->>GitHub: Follow approved pull request workflow
+        end
+        App->>App: Record versions and synchronization outcome
+    end
+```
+
 ![Jira, GitHub and Confluence interaction sequence](integration-sequence.png)
 
 ## 7. Data storage and state
@@ -374,6 +606,27 @@ workers. Store only authorized, relevant content; protect persisted proposal
 and audit data as well as credentials. Retention is configurable according to
 organizational policy. Back up the database and preserve Confluence page
 history; backup and restore operational details require confirmation.
+
+The proposed durable handoff records accepted event identity and work creation
+in one local transaction, or uses a recoverable persisted event state that
+will reliably create work before the event is considered complete. Enforce
+stable event and per-target operation identities with uniqueness constraints.
+Claim work with a lease; on expiry, recover work only after checking the prior
+operation's state. Record each attempt and transition. A database transaction
+cannot atomically commit an external write: after a crash or timeout, verify
+the target and recorded operation before retrying; stop and escalate if the
+outcome cannot be established safely.
+
+Audit records retain the required source and document versions, before-and-
+after content, proposal and review decisions, dependency changes, privileged
+actions, retries, failures and outcomes. Restrict access to sensitive audit
+material and configure retention according to the policy to be confirmed;
+do not expose secrets or sensitive personal information in logs, reports or
+generated documents. Rollback evidence includes the previous approved version,
+authorized document-owner approval, acting user and outcome. Check current
+versions and permissions before restoration, preserve history, and surface
+conflicts rather than overwrite newer changes. The approval capture mechanism
+and exact retention periods remain open.
 
 Confluence remains the workspace for reports and documentation; GitHub
 remains the repository for committed deliverables. Database records support
@@ -408,6 +661,16 @@ initially.
   content and model responses as untrusted; validate structured output and
   never let model text authorize an action or override human approval.
 
+Exclude secrets and sensitive information from AI inputs and generated
+outputs, even when the requesting user can access them. Define and verify
+screening and provider data-handling controls before enabling AI integration;
+fail and report when safe input or output cannot be established. Exact
+classification and provider controls require confirmation. Validate GitHub
+signatures and verify the actual authentication, replay protections and
+event-trigger coverage supported by Jira and Confluence for this site; reject
+unverifiable events. OAuth flows, scopes and service permissions remain
+unconfirmed and must be least-privilege.
+
 ## 9. Reliability and failure handling
 
 - Persist accepted event and work records before acknowledgment; use stable
@@ -436,6 +699,28 @@ initially.
   configurable interval; record checkpoints and failures. Manual checks use
   the same safe, idempotent processing path. Availability is best effort;
   quantitative targets remain deferred.
+
+Reconciliation must track durable per-source checkpoints and process all
+pages of available results before advancing a completed checkpoint. Compare
+registered identities, versions, paths and applicable issue links; use
+available source history or deletion records to identify missed changes,
+renames and deletions. A current-state comparison cannot guarantee recovery of
+intermediate changes that are no longer observable. Record and escalate
+unrecoverable history or incomplete scans; do not claim those events were
+recovered. Confirm actual history, pagination and lifecycle-event coverage
+with each integration.
+
+Classify errors using the source's supported semantics: distinguish
+confirmed missing documents, confirmed permission failures, transient errors,
+permanent errors and ambiguous outcomes. A 404 alone may not establish
+deletion when access is concealed. Stop and surface ambiguous cases, and never
+create a replacement automatically. Notify the document owner for confirmed
+missing pages, the owner or administrator for permission failures, and the
+responsible owner for permanent failures. Record notification delivery
+failures and escalate when an owner is unknown. The notification and
+escalation mechanisms require confirmation. Allow at most three retries
+after the initial attempt, with configurable exponential backoff; record
+each attempt and outcome.
 
 ### Failure handling and recovery flow
 
@@ -516,6 +801,16 @@ are not required by this proposal; scaling or high-availability choices depend
 on measured needs. If multiple workers are later used, scheduler ownership
 and job leases must prevent duplicate execution.
 
+Before production, measure representative workload, detection-to-report and
+post-approval publication latency, backlog behavior and recovery. Confirm
+hosting, capacity, backup and restore procedures, and measurable performance
+and availability targets with stakeholders; no numerical target is set here.
+In a later verification phase, use Python tests and appropriate controlled
+integration checks for duplicate and missed events, conflicting writes,
+stale approvals, authorization, partial failures, restarts and rollback.
+These are verification considerations, not implementation or a completed
+test plan.
+
 ### Deployment architecture diagram
 
 This proposed deployment view separates the public HTTPS entry point, Python
@@ -575,6 +870,14 @@ flowchart LR
 Until these decisions are resolved, the architecture does not authorize
 guessing source authority, bypassing approval or silently overwriting changes.
 
+For stakeholder confirmation specifically: identify the authoritative
+system and permitted directions for each artefact type; establish how the
+required human approval applies to ADS impact-report and review writes; and
+select a verifiable ADS review, PR evidence and owner-approved rollback
+mechanism. Until confirmed, report/review writes and affected synchronization
+paths cannot be automated safely. Verification of sender capabilities and
+conditional Confluence writes is also required, not assumed.
+
 ### Structured architectural decision summary
 
 The approved requirements constrain the design, but the technology choices
@@ -601,6 +904,68 @@ included for comparison; choosing one does not authorize additional scope.
 | FR-026–FR-030 | Section-level publication, version checks, audit and approved rollback. |
 | FR-031–FR-035 | Explicit error reporting, bounded retries and independent target processing. |
 | NFR-001–NFR-010 | Idempotency, best-effort operation, traceability, integrity, RBAC, OAuth, secret protection and safe logging. |
+
+### Detailed traceability after design review
+
+These are proposed architectural responses, not evidence of implementation.
+References to open decisions identify remaining design or site-validation
+work; see sections 4–12 and the preserved findings in
+[design-review.md](design-review.md).
+
+| Requirement | Proposed response and remaining qualification |
+| --- | --- |
+| FR-001 | Python-managed Artefact Registry, sections 4 and 7. |
+| FR-002 | Register KAN, the capstone repository, ADS and discovered artefacts, sections 1, 4 and 5. |
+| FR-003 | Manual registration and assisted discovery, section 4. |
+| FR-004 | Registry identity, location, version, relations and synchronization fields, section 4; ownership source remains open. |
+| FR-005 | Primary events and source-specific authentication, sections 5 and 8; trigger capabilities require validation. |
+| FR-006 | Jira state, fields and link comparison, sections 5.1 and 9; missed-history coverage requires validation. |
+| FR-007 | Tracked pushes, PRs, files, renames and deletions, sections 5.2 and 9. |
+| FR-008 | ADS page lifecycle events and reconciliation, sections 5.3 and 9; actual trigger coverage remains open. |
+| FR-009 | Scope and relevant-change filtering, sections 4–5. |
+| FR-010 | Event validation, durable handoff, deduplication and loop prevention, sections 4, 7–9. |
+| FR-011 | Authorized manual synchronization checks, sections 4 and 6. |
+| FR-012 | Configurable 15-minute reconciliation, checkpoints and limitations, sections 4 and 9. |
+| FR-013 | Persistent directed Dependency Registry, sections 4 and 7. |
+| FR-014 | Pending evidence-based dependency suggestions and authorized review, section 4. |
+| FR-015 | Direct and transitive traversal and cycle detection, section 4. |
+| FR-016 | Dependency paths, changed fields/files, traceability and advisory AI impacts, sections 4 and 10. |
+| FR-017 | Explicit report field and source mapping, section 4; severity and confidence methods remain open. |
+| FR-018 | ADS Impact Analysis report and source links before updates, sections 4–6; report-write approval remains open. |
+| FR-019 | Provider-independent proposal adapter, sections 4 and 10; runtime provider remains open. |
+| FR-020 | Authorized relevant context with secrets and sensitive information excluded, sections 8 and 10. |
+| FR-021 | Structured pending proposals with source, target and versions, sections 4 and 6. |
+| FR-022 | Authorized ADS review and GitHub PR workflow, sections 4–6; evidence mechanism remains open. |
+| FR-023 | Approval and rejection controls for cross-system updates, sections 4–6; report and review authorization remains open. |
+| FR-024 | Stale proposals regenerate against latest versions and require reapproval, section 6. |
+| FR-025 | Preserve unrelated content and fail on unknown authority or conflicts, sections 4–6. |
+| FR-026 | Approved section-level update and preservation checks, section 5.3; site capability requires validation. |
+| FR-027 | Version-guarded update, regeneration and reapproval; explicit approval for full logical replacement, sections 5.3 and 6. |
+| FR-028 | Owner-approved rollback, current-version check and audit evidence, section 7; approval capture remains open. |
+| FR-029 | Source, proposal, decisions, versions, content and outcomes in audit, section 7. |
+| FR-030 | Preserve Confluence history and configurable retention, sections 5.3 and 7; retention policy remains open. |
+| FR-031 | Confirm missing pages, mark Not Found and notify owner without replacement, section 9. |
+| FR-032 | Stop on confirmed permission failure and notify owner or administrator, section 9. |
+| FR-033 | Configurable backoff, at most three retries after the initial attempt and recorded attempts, section 9. |
+| FR-034 | Record permanent failures and escalate, section 9; channel remains open. |
+| FR-035 | Process targets independently and report outcomes, sections 6 and 9. |
+| NFR-001 | Idempotency, retry and reconciliation recovery, sections 7 and 9. |
+| NFR-002 | Event-driven asynchronous work; measurable latency targets remain open, sections 2 and 11. |
+| NFR-003 | Best-effort availability and operational validation, sections 9 and 11. |
+| NFR-004 | Explainable impacts, registry provenance and durable audit, sections 4 and 7. |
+| NFR-005 | Preserve content and history; guarded writes and conflict reapproval, sections 5.3, 6 and 9. |
+| NFR-006 | Security and access controls, section 8; integration validation remains open. |
+| NFR-007 | RBAC and authorization checks, sections 4, 6 and 8; identity source remains open. |
+| NFR-008 | OAuth and least privilege, section 8; actual flows and scopes remain open. |
+| NFR-009 | Secure secret storage and exclusion, section 8. |
+| NFR-010 | Prevent exposure in outputs, logs and reports; protect AI and audit data, sections 7–8 and 10. |
+| AC1 | Change detection and reconciliation, FR-005–FR-012. |
+| AC2 | Recorded dependency traversal, FR-013–FR-016. |
+| AC3 | Impact report, FR-017–FR-018; publication authorization remains open. |
+| AC4 | Provider-independent proposals, FR-019–FR-021. |
+| AC5 | Authorized human review and approval, FR-022–FR-025. |
+| AC6 | Approved Confluence updates, FR-026–FR-027. |
+| AC7 | Audit and failure handling, FR-029–FR-035. |
 
 This is an architecture proposal for human review. It is not a design review,
 implementation plan or production implementation.

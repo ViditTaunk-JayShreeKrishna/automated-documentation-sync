@@ -2,7 +2,7 @@
 
 **Document ID:** REQ-001  
 **Version:** 1.0  
-**Status:** Draft – Pending Approval  
+**Status:** Approved  
 **Source:** Jira KAN-1  
 **Owner:** TBD
 

@@ -91,6 +91,13 @@ owner, version, digest, related documents and synchronization status. Mirror
 pairs record source and target versions and digests; unmapped artefact types
 cannot be assigned authority implicitly.
 
+## Dependency registry
+
+Dependency candidates retain evidence and remain pending until an authorized
+administrator approves or rejects them. Only approved edges participate in
+impact traversal. Approval of a proposed edge detects direct or transitive
+cycles and fails closed. Rejection requires a reason and is audit recorded.
+
 ## Run
 
 In separate activated terminals:

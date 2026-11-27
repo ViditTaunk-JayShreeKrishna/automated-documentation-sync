@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from docsync.authorization import AuthenticatedIdentity, AuthorizationError, Role
 from docsync.db import create_database_engine
-from docsync.models import Artefact, AuditRecord, MirrorMapping
+from docsync.models import Artefact, AuditRecord, Dependency, MirrorMapping
 from docsync.registry import ArtefactRegistry, RegistryError
 
 
@@ -30,6 +30,7 @@ def test_register_preserves_stable_id_during_move() -> None:
     admin = AuthenticatedIdentity("admin-1", True, frozenset({Role.ADMINISTRATOR}))
     with Session(engine) as session:
         session.query(MirrorMapping).delete()
+        session.query(Dependency).delete()
         session.query(AuditRecord).delete()
         session.query(Artefact).delete()
         registry = ArtefactRegistry(session)
@@ -64,6 +65,11 @@ def test_duplicate_identity_and_unknown_owner_fail_closed() -> None:
     engine = create_database_engine({"DOCSYNC_DATABASE_URL": TEST_DATABASE_URL})
     admin = AuthenticatedIdentity("admin-1", True, frozenset({Role.ADMINISTRATOR}))
     with Session(engine) as session:
+        session.query(MirrorMapping).delete()
+        session.query(Dependency).delete()
+        session.query(AuditRecord).delete()
+        session.query(Artefact).delete()
+        session.commit()
         registry = ArtefactRegistry(session)
         first = registry.register(
             admin,

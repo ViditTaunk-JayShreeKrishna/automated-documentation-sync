@@ -5,7 +5,9 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Mapping
+from uuid import UUID
 
+from dotenv import find_dotenv, load_dotenv
 from pydantic import SecretStr
 
 
@@ -20,6 +22,11 @@ class Settings:
     github_repository: str
     github_branch: str
     confluence_space: str
+    atlassian_account_email: SecretStr = field(repr=False)
+    atlassian_cloud_id: str
+    jira_base_url: str
+    github_api_base_url: str
+    confluence_base_url: str
     reconciliation_seconds: int
     max_retries: int
     retry_backoff_seconds: float
@@ -54,9 +61,19 @@ def _secret(env: Mapping[str, str], name: str) -> SecretStr:
     return SecretStr(value)
 
 
+def _required(env: Mapping[str, str], name: str) -> str:
+    value = env.get(name)
+    if value is None or not value.strip():
+        raise ConfigurationError(f"{name} is required")
+    return value.strip()
+
+
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
-    """Load environment-only settings without including values in errors."""
+    """Load validated settings, sourcing local development values from .env."""
     if env is None:
+        dotenv_path = find_dotenv(usecwd=True)
+        if dotenv_path:
+            load_dotenv(dotenv_path, override=False)
         env = os.environ
 
     environment = env.get("DOCSYNC_ENVIRONMENT", "development")
@@ -74,6 +91,13 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
             raise ConfigurationError(
                 f"{name} is outside the initial approved scope; audited scope changes are not implemented"
             )
+
+    atlassian_email = _required(env, "DOCSYNC_ATLASSIAN_ACCOUNT_EMAIL")
+    atlassian_cloud_id = _required(env, "DOCSYNC_ATLASSIAN_CLOUD_ID")
+    try:
+        atlassian_cloud_id = str(UUID(atlassian_cloud_id))
+    except ValueError:
+        raise ConfigurationError("DOCSYNC_ATLASSIAN_CLOUD_ID must be a UUID")
 
     interval = _integer(env, "DOCSYNC_RECONCILIATION_SECONDS", "900")
     if interval <= 0:
@@ -103,6 +127,11 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         github_repository=scope["DOCSYNC_GITHUB_REPOSITORY"],
         github_branch=scope["DOCSYNC_GITHUB_BRANCH"],
         confluence_space=scope["DOCSYNC_CONFLUENCE_SPACE"],
+        atlassian_account_email=SecretStr(atlassian_email),
+        atlassian_cloud_id=atlassian_cloud_id,
+        jira_base_url=f"https://api.atlassian.com/ex/jira/{atlassian_cloud_id}",
+        github_api_base_url="https://api.github.com",
+        confluence_base_url=f"https://api.atlassian.com/ex/confluence/{atlassian_cloud_id}",
         reconciliation_seconds=interval,
         max_retries=retries,
         retry_backoff_seconds=backoff,

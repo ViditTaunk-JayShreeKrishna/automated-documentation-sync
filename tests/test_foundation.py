@@ -24,6 +24,9 @@ def configured_env() -> dict[str, str]:
         DOCSYNC_JIRA_ACCESS_TOKEN="jira-test-secret",
         DOCSYNC_GITHUB_ACCESS_TOKEN="github-test-secret",
         DOCSYNC_CONFLUENCE_ACCESS_TOKEN="confluence-test-secret",
+        DOCSYNC_ATLASSIAN_ACCOUNT_EMAIL="test@example.invalid",
+        DOCSYNC_ATLASSIAN_CLOUD_ID="3aaf5522-6248-468c-88ca-9546e0d58a6d",
+        PYTHON_DOTENV_DISABLED="1",
     )
     return env
 

@@ -1,8 +1,10 @@
 # Automated Documentation Sync
 
-This repository contains the approved project documents and the IP-01 Python
-service foundation. It does not yet detect changes, run a scheduler, process
-durable jobs, connect to external systems or synchronize documents.
+This repository contains the approved project documents and the Python service
+foundation. Read-only source adapters are available for controlled Jira,
+GitHub and Confluence reads, but the API and worker do not invoke them
+automatically. Change detection, event processing, scheduling and document
+synchronization are not yet implemented.
 
 ## Requirements
 
@@ -27,11 +29,16 @@ path to a compatible Python interpreter. On macOS or Linux, activate with
 ## Configuration validation
 
 `python -m docsync.config` validates environment settings without printing
-their values. Supply `DOCSYNC_JIRA_ACCESS_TOKEN`, `DOCSYNC_GITHUB_ACCESS_TOKEN`
-and `DOCSYNC_CONFLUENCE_ACCESS_TOKEN` through the process environment; do not
-commit them or put them in documentation. Use least-privilege OAuth access
-tokens provisioned for the intended environment. Validation checks presence,
-not actual permissions or token validity.
+their values and loads a local `.env` file when present (process environment
+values take precedence). Supply `DOCSYNC_JIRA_ACCESS_TOKEN`,
+`DOCSYNC_GITHUB_ACCESS_TOKEN`, `DOCSYNC_CONFLUENCE_ACCESS_TOKEN`,
+`DOCSYNC_ATLASSIAN_ACCOUNT_EMAIL` and `DOCSYNC_ATLASSIAN_CLOUD_ID`. Never
+commit `.env`, include credentials in documentation, or print their values.
+Scoped Atlassian API tokens use HTTP Basic authentication with the account
+email through the `api.atlassian.com` Jira and Confluence gateways. The gateway
+URLs are derived from the Cloud ID; GitHub uses `https://api.github.com`.
+Validation checks configuration presence and format, not actual permissions or
+token validity. See `.env.example` for safe placeholders.
 
 `DOCSYNC_ENVIRONMENT` accepts `development` (default), `test` or `production`.
 `DOCSYNC_RECONCILIATION_SECONDS` defaults to 900 and must be positive;
@@ -80,6 +87,19 @@ disallowed sensitive text fails closed. `DOCSYNC_REQUIRE_TLS` defaults to true
 and must remain true in production. Secret and sensitive values must not be
 stored in Markdown, logs or test fixtures. Live OAuth scopes and provider data
 handling remain unverified until authorized credentials and terms are available.
+
+## Read-only source adapters
+
+`docsync.source_adapters` provides scoped Jira issue search/read, GitHub branch
+tree/file reads and Confluence space/page reads. Jira and Confluence scoped
+Atlassian API tokens use HTTP Basic with the configured account email; GitHub
+uses a Bearer fine-grained token. Jira reads require project browse access and
+the applicable Jira read scope. GitHub needs repository metadata and contents
+read access. Confluence page bodies require the applicable content-read scope
+(`read:confluence-content.all` or its granular equivalent) and space view
+permission. These adapters perform GET requests only and classify permission,
+not-found, transient and unsupported results explicitly. They do not publish
+or update content.
 
 ## Artefact registry
 

@@ -1,4 +1,4 @@
-"""Authentication primitives for source webhooks; no receiver is enabled."""
+"""Authentication primitives for source webhooks."""
 
 import hashlib
 import hmac

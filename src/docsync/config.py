@@ -35,6 +35,8 @@ class Settings:
     jira_access_token: SecretStr = field(repr=False)
     github_access_token: SecretStr = field(repr=False)
     confluence_access_token: SecretStr = field(repr=False)
+    jira_webhook_secret: SecretStr | None = field(default=None, repr=False)
+    github_webhook_secret: SecretStr | None = field(default=None, repr=False)
 
 
 def _integer(env: Mapping[str, str], name: str, default: str) -> int:
@@ -66,6 +68,15 @@ def _required(env: Mapping[str, str], name: str) -> str:
     if value is None or not value.strip():
         raise ConfigurationError(f"{name} is required")
     return value.strip()
+
+
+def _optional_secret(env: Mapping[str, str], name: str) -> SecretStr | None:
+    if name not in env:
+        return None
+    secret = _secret(env, name)
+    if len(secret.get_secret_value().encode("utf-8")) < 32:
+        raise ConfigurationError(f"{name} must be at least 32 bytes")
+    return secret
 
 
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
@@ -121,6 +132,11 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     if environment == "production" and not require_tls:
         raise ConfigurationError("DOCSYNC_REQUIRE_TLS must be true in production")
 
+    jira_webhook_secret = _optional_secret(env, "DOCSYNC_JIRA_WEBHOOK_SECRET")
+    github_webhook_secret = _optional_secret(env, "DOCSYNC_GITHUB_WEBHOOK_SECRET")
+    if jira_webhook_secret and github_webhook_secret and jira_webhook_secret == github_webhook_secret:
+        raise ConfigurationError("Jira and GitHub webhook secrets must be distinct")
+
     return Settings(
         environment=environment,
         jira_project=scope["DOCSYNC_JIRA_PROJECT"],
@@ -140,6 +156,8 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         jira_access_token=_secret(env, "DOCSYNC_JIRA_ACCESS_TOKEN"),
         github_access_token=_secret(env, "DOCSYNC_GITHUB_ACCESS_TOKEN"),
         confluence_access_token=_secret(env, "DOCSYNC_CONFLUENCE_ACCESS_TOKEN"),
+        jira_webhook_secret=jira_webhook_secret,
+        github_webhook_secret=github_webhook_secret,
     )
 
 

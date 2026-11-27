@@ -3,8 +3,8 @@
 This repository contains the approved project documents and the Python service
 foundation. Read-only source adapters are available for controlled Jira,
 GitHub and Confluence reads, but the API and worker do not invoke them
-automatically. Change detection, event processing, scheduling and document
-synchronization are not yet implemented.
+automatically. A limited webhook receiver is available but disabled by default;
+event processing, scheduling and document synchronization are not yet implemented.
 
 ## Requirements
 
@@ -105,15 +105,26 @@ exclude environment files from discovery and content reads. Confluence page
 reads check the configured space before requesting content and again after the
 content read. They do not publish or update content.
 
-## Webhook authentication progress
+## Webhook intake progress
 
-IP-09 includes an isolated HMAC-SHA256 verifier for the documented GitHub and
-Jira signed webhook bodies. It is not connected to an HTTP endpoint. Signature
-verification alone does not establish replay protection or durable acceptance;
-the receiver remains disabled until source-specific configuration, scope,
-replay handling and durable event processing are implemented and verified.
-Confluence Automation authentication and source trigger coverage remain
-unverified.
+The `POST /webhooks/github` and `POST /webhooks/jira` endpoints are disabled
+unless their respective `DOCSYNC_GITHUB_WEBHOOK_SECRET` or
+`DOCSYNC_JIRA_WEBHOOK_SECRET` is configured. Use independently generated random
+secrets of at least 32 bytes, not API tokens. Production requests must reach the
+application with an HTTPS scheme; configure any trusted TLS-terminating proxy
+appropriately. The receiver verifies the provider's raw-body HMAC before
+validating scope and atomically persisting an event and a pending job.
+GitHub push events on the configured repository and branch and Jira issue
+created, updated and deleted events in KAN are the currently supported subset;
+other events are rejected. Confluence intake is not implemented.
+
+The SHA-256 digest of the signed body is the persistent replay/deduplication
+identity, rather than an unsigned delivery header. This intentionally collapses
+identical signed bodies, including any distinct legitimate events with identical
+bodies, and only prevents replay while the event record is retained. The
+worker does not yet process accepted jobs; reconciliation and lifecycle coverage
+are not implemented. Live webhook delivery has not been verified. IP-09
+remains in progress pending end-to-end coverage and verification.
 
 ## Artefact registry
 

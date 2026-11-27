@@ -81,6 +81,16 @@ and must remain true in production. Secret and sensitive values must not be
 stored in Markdown, logs or test fixtures. Live OAuth scopes and provider data
 handling remain unverified until authorized credentials and terms are available.
 
+## Artefact registry
+
+Registered artefacts have an immutable application UUID and a unique
+system/scope/external-ID identity. Registration and confirmed rename/move
+operations require an authenticated administrator and are audited. Unknown
+ownership blocks owner-dependent operations. Each record persists location,
+owner, version, digest, related documents and synchronization status. Mirror
+pairs record source and target versions and digests; unmapped artefact types
+cannot be assigned authority implicitly.
+
 ## Run
 
 In separate activated terminals:

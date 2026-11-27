@@ -144,3 +144,21 @@ class OwnerMapping(Base):
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class MirrorMapping(Base):
+    __tablename__ = "mirror_mappings"
+    __table_args__ = (
+        UniqueConstraint("source_artefact_id", "target_artefact_id", name="uq_mirror_mapping"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid_value)
+    source_artefact_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("artefacts.id", ondelete="RESTRICT"), nullable=False)
+    target_artefact_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("artefacts.id", ondelete="RESTRICT"), nullable=False)
+    source_version: Mapped[str | None] = mapped_column(String(255))
+    target_version: Mapped[str | None] = mapped_column(String(255))
+    source_digest: Mapped[str | None] = mapped_column(String(128))
+    target_digest: Mapped[str | None] = mapped_column(String(128))
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -105,6 +105,16 @@ exclude environment files from discovery and content reads. Confluence page
 reads check the configured space before requesting content and again after the
 content read. They do not publish or update content.
 
+## Webhook authentication progress
+
+IP-09 includes an isolated HMAC-SHA256 verifier for the documented GitHub and
+Jira signed webhook bodies. It is not connected to an HTTP endpoint. Signature
+verification alone does not establish replay protection or durable acceptance;
+the receiver remains disabled until source-specific configuration, scope,
+replay handling and durable event processing are implemented and verified.
+Confluence Automation authentication and source trigger coverage remain
+unverified.
+
 ## Artefact registry
 
 Registered artefacts have an immutable application UUID and a unique

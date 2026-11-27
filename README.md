@@ -55,8 +55,9 @@ validating token presence does not enable integrations or verify permissions.
 ## Database setup
 
 Install the development environment and set `DOCSYNC_DATABASE_URL` to a
-PostgreSQL connection URL. The development default is an isolated local test
-database. Production must explicitly configure the database URL and secrets.
+PostgreSQL connection URL. The development default points to a local test
+database, but does not prove that the database is isolated. Production must
+explicitly configure the database URL and secrets.
 
 Apply migrations:
 
@@ -206,6 +207,10 @@ are also available.
 ```text
 python -m pytest
 ```
+
+The database tests delete records and downgrade and recreate tables. Set
+`DOCSYNC_DATABASE_URL` to a dedicated disposable PostgreSQL database before
+running them; never point the test suite at a shared or production database.
 
 The tests exercise the liveness response, worker stop signal and actual API
 and worker process startup. GitHub Actions installs the development

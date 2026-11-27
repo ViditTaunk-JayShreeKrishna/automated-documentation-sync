@@ -3,6 +3,12 @@ import hashlib
 import hmac
 import json
 import os
+import socket
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
 import uuid
 from dataclasses import replace
 
@@ -191,6 +197,57 @@ def test_job_insert_failure_rolls_back_event(receiver, settings, engine):
     assert asyncio.run(send("github", body, signature))[0] == 503
     with Session(engine) as session:
         assert session.execute(select(Event).filter_by(source_system="github", source_event_id=digest)).scalar_one_or_none() is None
+
+
+def test_real_local_http_delivery_is_durably_accepted(receiver, settings, engine, tmp_path):
+    body, signature = signed_body(github_payload(settings), GITHUB_SECRET)
+    digest = hashlib.sha256(body).hexdigest()
+    receiver.append(("github", digest))
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    env = {key: value for key, value in os.environ.items() if not key.startswith("DOCSYNC_")}
+    env.update(
+        DOCSYNC_ENVIRONMENT="test", DOCSYNC_DATABASE_URL=DATABASE_URL,
+        DOCSYNC_JIRA_ACCESS_TOKEN="jira-test-token", DOCSYNC_GITHUB_ACCESS_TOKEN="github-test-token",
+        DOCSYNC_CONFLUENCE_ACCESS_TOKEN="confluence-test-token",
+        DOCSYNC_ATLASSIAN_ACCOUNT_EMAIL="test@example.invalid",
+        DOCSYNC_ATLASSIAN_CLOUD_ID="3aaf5522-6248-468c-88ca-9546e0d58a6d",
+        DOCSYNC_GITHUB_WEBHOOK_SECRET=GITHUB_SECRET, PYTHON_DOTENV_DISABLED="1",
+    )
+    with (tmp_path / "server.log").open("w+") as log:
+        process = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "docsync.api:app", "--host", "127.0.0.1", "--port", str(port)],
+            stdout=log, stderr=subprocess.STDOUT, env=env,
+        )
+        try:
+            url = f"http://127.0.0.1:{port}"
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                if process.poll() is not None:
+                    pytest.fail("Local API exited before becoming ready")
+                try:
+                    with urllib.request.urlopen(url + "/health/live", timeout=1):
+                        break
+                except (urllib.error.URLError, TimeoutError):
+                    time.sleep(0.1)
+            else:
+                pytest.fail("Local API did not become ready")
+            request = urllib.request.Request(
+                url + "/webhooks/github", data=body, method="POST",
+                headers={"X-Hub-Signature-256": signature, "X-GitHub-Event": "push"},
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                assert response.status == 200
+                assert json.load(response)["status"] == "accepted"
+            with Session(engine) as session:
+                event = session.execute(select(Event).filter_by(source_system="github", source_event_id=digest)).scalar_one()
+                job = session.execute(select(Job).filter_by(operation_type="source_event", operation_id="github:" + digest)).scalar_one()
+                assert job.payload["event_id"] == str(event.id)
+        finally:
+            if process.poll() is None:
+                process.terminate()
+            process.wait(timeout=10)
 
 
 def test_secrets_are_optional_redacted_and_distinct(settings):

@@ -126,6 +126,32 @@ worker does not yet process accepted jobs; reconciliation and lifecycle coverage
 are not implemented. Live webhook delivery has not been verified. IP-09
 remains in progress pending end-to-end coverage and verification.
 
+### Live webhook prerequisites (not yet configured)
+
+- Run the API with a durable PostgreSQL database behind a publicly reachable
+  HTTPS endpoint with a trusted certificate. Configure the reverse proxy and
+  ASGI server to trust forwarded headers only from the actual proxy. Restrict
+  other public endpoints and supply production settings through a secret
+  manager or environment variables. Do not disable certificate validation.
+- The GitHub fine-grained token needs repository **Webhooks: read** to list
+  hooks and **Webhooks: read and write** to register one through the API, or a
+  repository administrator may configure it. The current token returned HTTP
+  403 for listing with `repository_hooks=read` in the accepted-permissions
+  response header. Configure JSON delivery for push events to
+  `/webhooks/github`, using the corresponding secret. The receiver currently
+  rejects GitHub's initial `ping` event; a controlled push, not the ping, is
+  needed to test the currently supported path.
+- Jira administrative webhook configuration requires the **Administer Jira**
+  global permission. Configure issue-created, issue-updated and issue-deleted
+  events, restricted to project KAN, to `/webhooks/jira` with its distinct
+  secret. Verify sender signature and controlled delivery on the actual site.
+- Confluence Automation authentication and lifecycle trigger coverage remain
+  unverified. Do not enable a Confluence path until these controls are proven.
+
+Do not register live senders yet: the receiver covers only a subset of events,
+the worker is idle, and the HTTPS endpoint and permissions are not established.
+These steps describe prerequisites, not evidence that a hook exists or works.
+
 ## Artefact registry
 
 Registered artefacts have an immutable application UUID and a unique

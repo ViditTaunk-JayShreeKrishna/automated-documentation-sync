@@ -91,3 +91,28 @@ def test_duplicate_identity_and_unknown_owner_fail_closed() -> None:
         with pytest.raises(AuthorizationError, match="Unknown document owner"):
             registry.require_owner(first)
     engine.dispose()
+
+
+def test_registration_persists_related_documents_and_discovery_evidence() -> None:
+    engine = create_database_engine({"DOCSYNC_DATABASE_URL": TEST_DATABASE_URL})
+    admin = AuthenticatedIdentity("admin-1", True, frozenset({Role.ADMINISTRATOR}))
+    with Session(engine) as session:
+        artefact = ArtefactRegistry(session).register(
+            admin,
+            name="Metadata test",
+            artefact_type="requirements",
+            source_system="github",
+            configured_scope="KAN",
+            external_id="metadata-test.md",
+            related_document_ids=["architecture.md"],
+            discovery_evidence={"source": "approved review"},
+        )
+        artefact_id = artefact.id
+    with Session(engine) as session:
+        saved = session.get(Artefact, artefact_id)
+        assert saved is not None
+        assert saved.metadata_ == {
+            "related_document_ids": ["architecture.md"],
+            "discovery_evidence": {"source": "approved review"},
+        }
+    engine.dispose()

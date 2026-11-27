@@ -63,7 +63,7 @@ class ArtefactRegistry:
             owner_account_id=owner_account_id,
             version=version,
             content_digest=content_digest,
-            metadata={
+            metadata_={
                 "related_document_ids": list(related_document_ids),
                 "discovery_evidence": discovery_evidence or {},
             },

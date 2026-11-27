@@ -9,7 +9,7 @@ contains the published implementation record. Previously recorded Done
 statuses below are inherited from Jira; they have not all been independently
 re-audited against every criterion in this update.
 
-The latest complete local suite for this update passed 119 tests with an
+The latest complete local suite for this update passed 120 tests with an
 isolated PostgreSQL database; `pip check` passed. Tests are local evidence,
 not proof of live permissions, safety, production readiness or task acceptance.
 The source and test paths below are relative to the repository root.
@@ -21,10 +21,10 @@ The source and test paths below are relative to the repository root.
 | IP-03 | [KAN-6](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-6) Done | `models.py`, migrations; `d0ea819` | `test_database.py`; inherited status. |
 | IP-04 | [KAN-5](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-5) Done | `authorization.py`; `cf0d1ef` | `test_authorization.py`; native identity integration remains unverified. |
 | IP-05 | [KAN-8](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-8) Done | `security.py`, `config.py`; `9ea2a8d` | `test_security.py`, `test_config.py`; production data-handling and provider controls remain unverified. |
-| IP-06 | [KAN-7](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-7) Done | `registry.py`; `1e28e8a` | `test_registry.py`; inherited status. |
+| IP-06 | [KAN-7](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-7) Done | `registry.py`; `1e28e8a` and this update | `test_registry.py`; fixed registration metadata loss. Previously registered records require authorized review against their original evidence. |
 | IP-07 | [KAN-10](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-10) Done | `dependencies.py`; `0b7fd91` | `test_dependencies.py`; inherited status. |
 | IP-08 | [KAN-4](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-4) Done | `source_adapters.py`; `e6baf36`, `dfe4a16` | `test_source_adapters.py`; controlled reads previously verified, not a write integration. |
-| IP-09 | [KAN-9](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-9) In Progress | `webhooks.py`, `api.py`; `41bd6c8`, `c6dbb3c` and this update | `test_webhook_receiver.py`, `test_webhook_auth.py`; Confluence intake, complete event filtering and live sender verification remain outstanding. |
+| IP-09 | [KAN-9](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-9) In Progress | `webhooks.py`, `api.py`; `41bd6c8`, `c6dbb3c`, `99a4632` | `test_webhook_receiver.py`, `test_webhook_auth.py`; Confluence intake, complete event filtering and live sender verification remain outstanding. |
 | IP-10 | [KAN-12](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-12) To Do | Event/job schema and acceptance only: `models.py`, `webhooks.py`; `d0ea819`, `41bd6c8` | Worker processing, leases and crash recovery are not implemented. |
 | IP-11 | [KAN-14](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-14) To Do | No reconciler | Scheduler, checkpoints, manual trigger and recovery tests not implemented. |
 | IP-12 | [KAN-13](https://demo-capstone-github-copilot.atlassian.net/browse/KAN-13) To Do | Dependency registry only: `dependencies.py`; `0b7fd91` | Impact traversal, paths and cycle tests not implemented. |

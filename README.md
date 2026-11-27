@@ -181,6 +181,11 @@ owner, version, digest, related documents and synchronization status. Mirror
 pairs record source and target versions and digests; unmapped artefact types
 cannot be assigned authority implicitly.
 
+Registrations created before the metadata persistence fix may have lost their
+related-document IDs and discovery evidence. Existing records need an
+authorized review against the original evidence; the fix cannot reconstruct
+information that was not stored.
+
 ## Dependency registry
 
 Dependency candidates retain evidence and remain pending until an authorized

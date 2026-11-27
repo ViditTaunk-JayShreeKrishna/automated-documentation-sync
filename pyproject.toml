@@ -9,8 +9,11 @@ description = "Python service foundation for Automated Documentation Sync"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
+    "alembic>=1.14,<2",
     "fastapi>=0.115,<1",
+    "psycopg[binary]>=3.2,<4",
     "pydantic>=2,<3",
+    "SQLAlchemy>=2,<3",
     "uvicorn>=0.30,<1",
 ]
 

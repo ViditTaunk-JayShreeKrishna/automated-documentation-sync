@@ -23,6 +23,7 @@ class Settings:
     reconciliation_seconds: int
     max_retries: int
     retry_backoff_seconds: float
+    database_url: SecretStr
     jira_access_token: SecretStr = field(repr=False)
     github_access_token: SecretStr = field(repr=False)
     confluence_access_token: SecretStr = field(repr=False)
@@ -80,6 +81,14 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     if not 0 <= retries <= 3:
         raise ConfigurationError("DOCSYNC_MAX_RETRIES must be between zero and three")
     backoff = _positive_number(env, "DOCSYNC_RETRY_BACKOFF_SECONDS", "1")
+    database_url_value = env.get(
+        "DOCSYNC_DATABASE_URL",
+        "postgresql+psycopg://docsync_test@127.0.0.1:55432/docsync_test",
+    )
+    if environment == "production" and "DOCSYNC_DATABASE_URL" not in env:
+        raise ConfigurationError("DOCSYNC_DATABASE_URL is required in production")
+    if not database_url_value.strip().startswith(("postgresql://", "postgresql+psycopg://")):
+        raise ConfigurationError("DOCSYNC_DATABASE_URL must be a PostgreSQL URL")
 
     return Settings(
         environment=environment,
@@ -90,6 +99,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         reconciliation_seconds=interval,
         max_retries=retries,
         retry_backoff_seconds=backoff,
+        database_url=SecretStr(database_url_value),
         jira_access_token=_secret(env, "DOCSYNC_JIRA_ACCESS_TOKEN"),
         github_access_token=_secret(env, "DOCSYNC_GITHUB_ACCESS_TOKEN"),
         confluence_access_token=_secret(env, "DOCSYNC_CONFLUENCE_ACCESS_TOKEN"),

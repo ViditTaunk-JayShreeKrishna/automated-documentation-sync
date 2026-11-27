@@ -45,6 +45,23 @@ missing tokens stop startup. The API also validates when started through an
 ASGI server directly. Neither process connects to external systems yet:
 validating token presence does not enable integrations or verify permissions.
 
+## Database setup
+
+Install the development environment and set `DOCSYNC_DATABASE_URL` to a
+PostgreSQL connection URL. The development default is an isolated local test
+database. Production must explicitly configure the database URL and secrets.
+
+Apply migrations:
+
+```text
+alembic upgrade head
+alembic current
+```
+
+The migration creates tables for artefacts, dependencies, events, jobs,
+proposals, approvals and audit records. Reversible migration and database
+constraint tests run as part of `python -m pytest`.
+
 ## Run
 
 In separate activated terminals:

@@ -42,6 +42,8 @@ def test_overrides_within_safe_limits(env: dict[str, str]) -> None:
 @pytest.mark.parametrize("environment", ["development", "test", "production"])
 def test_environment_selection(env: dict[str, str], environment: str) -> None:
     env["DOCSYNC_ENVIRONMENT"] = environment
+    if environment == "production":
+        env["DOCSYNC_DATABASE_URL"] = "postgresql+psycopg://user:password@localhost/docsync"
     assert load_settings(env).environment == environment
 
 
@@ -89,4 +91,18 @@ def test_missing_secrets_fail_closed(env: dict[str, str], name: str) -> None:
 def test_blank_secret_fails_closed(env: dict[str, str]) -> None:
     env["DOCSYNC_JIRA_ACCESS_TOKEN"] = "   "
     with pytest.raises(ConfigurationError, match="DOCSYNC_JIRA_ACCESS_TOKEN"):
+        load_settings(env)
+
+
+def test_database_url_is_redacted(env: dict[str, str]) -> None:
+    env["DOCSYNC_DATABASE_URL"] = "postgresql+psycopg://user:password@localhost/db"
+    settings = load_settings(env)
+    assert "password" not in repr(settings)
+    assert "password" not in repr(asdict(settings))
+
+
+def test_production_requires_explicit_database_url(env: dict[str, str]) -> None:
+    env["DOCSYNC_ENVIRONMENT"] = "production"
+    env.pop("DOCSYNC_DATABASE_URL", None)
+    with pytest.raises(ConfigurationError, match="DOCSYNC_DATABASE_URL"):
         load_settings(env)

@@ -14,7 +14,10 @@ from docsync.db import create_database_engine
 from docsync.models import Artefact, AuditRecord, Dependency
 
 
-TEST_DATABASE_URL = "postgresql+psycopg://docsync_test@127.0.0.1:55432/docsync_test"
+TEST_DATABASE_URL = os.environ.get(
+    "DOCSYNC_DATABASE_URL",
+    "postgresql+psycopg://docsync_test@127.0.0.1:55432/docsync_test",
+)
 
 
 @pytest.fixture(scope="session")

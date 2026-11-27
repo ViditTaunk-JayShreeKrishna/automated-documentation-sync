@@ -7,6 +7,25 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: docsync_test
+          POSTGRES_PASSWORD: docsync_test
+          POSTGRES_DB: docsync_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U docsync_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DOCSYNC_DATABASE_URL: postgresql+psycopg://docsync_test:docsync_test@127.0.0.1:5432/docsync_test
+      DOCSYNC_JIRA_ACCESS_TOKEN: ci-test-jira-token
+      DOCSYNC_GITHUB_ACCESS_TOKEN: ci-test-github-token
+      DOCSYNC_CONFLUENCE_ACCESS_TOKEN: ci-test-confluence-token
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

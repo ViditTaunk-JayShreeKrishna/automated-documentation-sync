@@ -24,6 +24,7 @@ class Settings:
     max_retries: int
     retry_backoff_seconds: float
     database_url: SecretStr
+    require_tls: bool
     jira_access_token: SecretStr = field(repr=False)
     github_access_token: SecretStr = field(repr=False)
     confluence_access_token: SecretStr = field(repr=False)
@@ -89,6 +90,12 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         raise ConfigurationError("DOCSYNC_DATABASE_URL is required in production")
     if not database_url_value.strip().startswith(("postgresql://", "postgresql+psycopg://")):
         raise ConfigurationError("DOCSYNC_DATABASE_URL must be a PostgreSQL URL")
+    require_tls_text = env.get("DOCSYNC_REQUIRE_TLS", "true").lower()
+    if require_tls_text not in {"true", "false"}:
+        raise ConfigurationError("DOCSYNC_REQUIRE_TLS must be true or false")
+    require_tls = require_tls_text == "true"
+    if environment == "production" and not require_tls:
+        raise ConfigurationError("DOCSYNC_REQUIRE_TLS must be true in production")
 
     return Settings(
         environment=environment,
@@ -100,6 +107,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         max_retries=retries,
         retry_backoff_seconds=backoff,
         database_url=SecretStr(database_url_value),
+        require_tls=require_tls,
         jira_access_token=_secret(env, "DOCSYNC_JIRA_ACCESS_TOKEN"),
         github_access_token=_secret(env, "DOCSYNC_GITHUB_ACCESS_TOKEN"),
         confluence_access_token=_secret(env, "DOCSYNC_CONFLUENCE_ACCESS_TOKEN"),

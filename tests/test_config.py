@@ -106,3 +106,19 @@ def test_production_requires_explicit_database_url(env: dict[str, str]) -> None:
     env.pop("DOCSYNC_DATABASE_URL", None)
     with pytest.raises(ConfigurationError, match="DOCSYNC_DATABASE_URL"):
         load_settings(env)
+
+
+def test_production_requires_tls(env: dict[str, str]) -> None:
+    env.update(
+        DOCSYNC_ENVIRONMENT="production",
+        DOCSYNC_DATABASE_URL="postgresql+psycopg://user:password@db.example/docsync",
+        DOCSYNC_REQUIRE_TLS="false",
+    )
+    with pytest.raises(ConfigurationError, match="DOCSYNC_REQUIRE_TLS"):
+        load_settings(env)
+
+
+def test_invalid_tls_setting_fails_closed(env: dict[str, str]) -> None:
+    env["DOCSYNC_REQUIRE_TLS"] = "sometimes"
+    with pytest.raises(ConfigurationError, match="DOCSYNC_REQUIRE_TLS"):
+        load_settings(env)

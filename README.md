@@ -72,6 +72,15 @@ changes are durable records and must be accompanied by audit evidence. Native
 Jira, GitHub or Confluence account verification is not claimed until the
 corresponding live integration is configured and tested.
 
+## Security controls
+
+Structured log helpers redact secret-looking values, bearer credentials and
+personal identifiers. AI, report and audit text are screened before use and
+disallowed sensitive text fails closed. `DOCSYNC_REQUIRE_TLS` defaults to true
+and must remain true in production. Secret and sensitive values must not be
+stored in Markdown, logs or test fixtures. Live OAuth scopes and provider data
+handling remain unverified until authorized credentials and terms are available.
+
 ## Run
 
 In separate activated terminals:

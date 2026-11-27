@@ -115,9 +115,12 @@ secrets of at least 32 bytes, not API tokens. Production requests must reach the
 application with an HTTPS scheme; configure any trusted TLS-terminating proxy
 appropriately. The receiver verifies the provider's raw-body HMAC before
 validating scope and atomically persisting an event and a pending job.
-GitHub push events on the configured repository and branch and Jira issue
-created, updated and deleted events in KAN are the currently supported subset;
-other events are rejected. Confluence intake is not implemented.
+GitHub push and selected pull-request events targeting the configured repository
+and branch and Jira issue created, updated and deleted events in KAN are the
+currently supported subset; other events are rejected. Pull-request events
+record base/head revisions and merge state but are not approval evidence and
+do not make an unmerged change authoritative. Confluence intake is not
+implemented.
 
 The SHA-256 digest of the signed body is the persistent replay/deduplication
 identity, rather than an unsigned delivery header. This intentionally collapses
@@ -138,7 +141,7 @@ remains in progress pending end-to-end coverage and verification.
   hooks and **Webhooks: read and write** to register one through the API, or a
   repository administrator may configure it. The current token returned HTTP
   403 for listing with `repository_hooks=read` in the accepted-permissions
-  response header. Configure JSON delivery for push events to
+  response header. Configure JSON delivery for push and pull-request events to
   `/webhooks/github`, using the corresponding secret. The receiver currently
   rejects GitHub's initial `ping` event; a controlled push, not the ping, is
   needed to test the currently supported path.
@@ -152,6 +155,9 @@ remains in progress pending end-to-end coverage and verification.
 Do not register live senders yet: the receiver covers only a subset of events,
 the worker is idle, and the HTTPS endpoint and permissions are not established.
 These steps describe prerequisites, not evidence that a hook exists or works.
+
+See the [implementation traceability matrix](implementation-traceability.md)
+for the recorded Jira statuses, code evidence and outstanding acceptance work.
 
 ## AI adapter progress
 

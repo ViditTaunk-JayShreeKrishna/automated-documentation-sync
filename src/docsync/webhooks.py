@@ -18,6 +18,10 @@ class InvalidWebhook(ValueError):
     """A signed webhook is malformed or not supported by this receiver."""
 
 
+def _revision(value: object) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", value) is not None
+
+
 def normalize_event(source: str, event_type: str, body: bytes, settings: Settings) -> dict[str, Any]:
     try:
         payload = json.loads(body)
@@ -33,9 +37,39 @@ def normalize_event(source: str, event_type: str, body: bytes, settings: Setting
         if ref != "refs/heads/" + settings.github_branch:
             raise InvalidWebhook("Event is outside configured branch")
         before, after = payload.get("before"), payload.get("after")
-        if not all(isinstance(value, str) and re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", value) for value in (before, after)):
+        if not all(_revision(value) for value in (before, after)):
             raise InvalidWebhook("Push event omitted valid revisions")
         return {"type": "push", "repository": settings.github_repository, "ref": ref, "before": before, "after": after}
+    if source == "github" and event_type == "pull_request":
+        repository, pull_request = payload.get("repository"), payload.get("pull_request")
+        if not isinstance(repository, dict) or repository.get("full_name") != settings.github_repository:
+            raise InvalidWebhook("Event is outside configured repository")
+        if not isinstance(pull_request, dict):
+            raise InvalidWebhook("Pull request event omitted its details")
+        base, head = pull_request.get("base"), pull_request.get("head")
+        if not isinstance(base, dict) or not isinstance(head, dict):
+            raise InvalidWebhook("Pull request event omitted revisions")
+        base_repository = base.get("repo")
+        if (
+            not isinstance(base_repository, dict)
+            or base_repository.get("full_name") != settings.github_repository
+            or base.get("ref") != settings.github_branch
+        ):
+            raise InvalidWebhook("Event is outside configured branch")
+        action, number, merged = payload.get("action"), payload.get("number"), pull_request.get("merged")
+        if not isinstance(action, str) or action not in {"opened", "reopened", "synchronize", "edited", "closed"}:
+            raise InvalidWebhook("Unsupported pull request action")
+        if type(number) is not int or number <= 0 or pull_request.get("number") != number:
+            raise InvalidWebhook("Pull request identity is invalid")
+        if type(merged) is not bool or (merged and action != "closed"):
+            raise InvalidWebhook("Pull request merge state is invalid")
+        if not _revision(base.get("sha")) or not _revision(head.get("sha")):
+            raise InvalidWebhook("Pull request event omitted valid revisions")
+        return {
+            "type": "pull_request", "repository": settings.github_repository,
+            "number": number, "action": action, "base_ref": settings.github_branch,
+            "base_sha": base["sha"], "head_sha": head["sha"], "merged": merged,
+        }
     if source == "jira":
         kind = payload.get("webhookEvent")
         if kind not in {"jira:issue_created", "jira:issue_updated", "jira:issue_deleted"}:

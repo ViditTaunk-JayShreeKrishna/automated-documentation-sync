@@ -105,6 +105,25 @@ def github_payload(settings):
     }
 
 
+def pull_request_payload(settings):
+    return {
+        "action": "closed",
+        "number": 123,
+        "repository": {"full_name": settings.github_repository},
+        "pull_request": {
+            "number": 123,
+            "merged": True,
+            "base": {
+                "repo": {"full_name": settings.github_repository},
+                "ref": settings.github_branch,
+                "sha": uuid.uuid4().hex + "0" * 8,
+            },
+            "head": {"sha": uuid.uuid4().hex + "0" * 8},
+            "body": "must-not-be-persisted",
+        },
+    }
+
+
 @pytest.fixture
 def receiver(monkeypatch, settings, engine):
     monkeypatch.setattr(app.state, "settings", settings, raising=False)
@@ -149,6 +168,70 @@ def test_jira_receiver_accepts_scoped_issue_event(receiver, engine):
     with Session(engine) as session:
         event = session.execute(select(Event).filter_by(source_system="jira", source_event_id=digest)).scalar_one()
         assert event.normalized_payload["issue_key"] == "KAN-9"
+
+
+def test_github_pull_request_delivery_records_signed_state_and_deduplicates(receiver, settings, engine):
+    payload = pull_request_payload(settings)
+    body, signature = signed_body(payload, GITHUB_SECRET)
+    digest = hashlib.sha256(body).hexdigest()
+    receiver.append(("github", digest))
+    assert asyncio.run(send("github", body, signature, event_type="pull_request")) == (200, {"status": "accepted"})
+    assert asyncio.run(send("github", body, signature, event_type="pull_request", delivery="different")) == (
+        200, {"status": "duplicate"}
+    )
+    with Session(engine) as session:
+        event = session.execute(select(Event).filter_by(source_system="github", source_event_id=digest)).scalar_one()
+        assert event.normalized_payload["merged"] is True
+        assert event.normalized_payload["number"] == 123
+        assert event.normalized_payload["base_sha"] == payload["pull_request"]["base"]["sha"]
+        assert event.normalized_payload["head_sha"] == payload["pull_request"]["head"]["sha"]
+        assert "must-not-be-persisted" not in repr(event.normalized_payload)
+        assert session.execute(select(Job).filter_by(operation_id="github:" + digest)).scalar_one().payload == {
+            "event_id": str(event.id)
+        }
+
+
+@pytest.mark.parametrize("case", ["wrong_branch", "wrong_repository", "wrong_base_repository", "invalid_number", "invalid_sha", "unsupported_action", "malformed_action", "invalid_merge_state"])
+def test_github_pull_request_rejects_invalid_or_unscoped_events(receiver, settings, case):
+    payload = pull_request_payload(settings)
+    if case == "wrong_branch":
+        payload["pull_request"]["base"]["ref"] = "main"
+    elif case == "wrong_repository":
+        payload["repository"]["full_name"] = "other/repository"
+    elif case == "wrong_base_repository":
+        payload["pull_request"]["base"]["repo"]["full_name"] = "other/repository"
+    elif case == "invalid_number":
+        payload["number"] = True
+    elif case == "invalid_sha":
+        payload["pull_request"]["head"]["sha"] = "not-a-sha"
+    elif case == "unsupported_action":
+        payload["action"] = "labeled"
+    elif case == "malformed_action":
+        payload["action"] = []
+    else:
+        payload["action"] = "opened"
+    body, signature = signed_body(payload, GITHUB_SECRET)
+    assert asyncio.run(send("github", body, signature, event_type="pull_request"))[0] == 422
+
+
+@pytest.mark.parametrize("action", ["opened", "reopened", "synchronize", "edited", "closed"])
+def test_github_pull_request_unmerged_state_is_preserved(receiver, settings, engine, action):
+    payload = pull_request_payload(settings)
+    payload["action"] = action
+    payload["pull_request"]["merged"] = False
+    body, signature = signed_body(payload, GITHUB_SECRET)
+    digest = hashlib.sha256(body).hexdigest()
+    receiver.append(("github", digest))
+    assert asyncio.run(send("github", body, signature, event_type="pull_request"))[0] == 200
+    with Session(engine) as session:
+        event = session.execute(select(Event).filter_by(source_system="github", source_event_id=digest)).scalar_one()
+        assert event.normalized_payload["merged"] is False
+
+
+def test_github_pull_request_tampering_and_unsigned_header_cannot_reclassify(receiver, settings):
+    body, signature = signed_body(pull_request_payload(settings), GITHUB_SECRET)
+    assert asyncio.run(send("github", body + b" ", signature, event_type="pull_request"))[0] == 401
+    assert asyncio.run(send("github", body, signature, event_type="push"))[0] == 422
 
 
 def test_rejects_invalid_signatures_and_out_of_scope_events(receiver, settings):

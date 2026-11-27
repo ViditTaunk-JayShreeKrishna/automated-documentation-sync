@@ -239,13 +239,23 @@ class GitHubSourceAdapter:
                 status=str(item.get("type", "")),
             )
             for item in entries
-            if item.get("type") == "blob"
+            if item.get("type") == "blob" and not self._is_environment_file(
+                str(item.get("path", ""))
+            )
         )
         return SourcePage(records, None)
+
+    @staticmethod
+    def _is_environment_file(path: str) -> bool:
+        return any(part.lower() == ".env" or part.lower().startswith(".env.") for part in path.split("/"))
 
     def read_file(self, path: str, ref: str | None = None) -> SourceRecord:
         if not path or path.startswith("/") or ".." in path.split("/"):
             raise ValueError("GitHub path must be a repository-relative path")
+        if self._is_environment_file(path):
+            raise SourcePermissionError("GitHub environment file access is prohibited")
+        if ref is not None and ref != self.settings.github_branch:
+            raise SourcePermissionError("GitHub ref is outside the configured tracked branch")
         endpoint = quote(path, safe="/")
         response = self.client.get(
             f"/repos/{self.owner}/{self.repository}/contents/{endpoint}",
@@ -310,10 +320,21 @@ class ConfluenceSourceAdapter:
     def read_page(self, page_id: str) -> SourceRecord:
         if not page_id.isdecimal():
             raise ValueError("Confluence page ID must be numeric")
+        space_id = str(self.read_space()["id"])
+        metadata = self.client.get(f"/wiki/api/v2/pages/{page_id}")
+        self._check_page_space(metadata, space_id)
         page = self.client.get(
             f"/wiki/api/v2/pages/{page_id}", {"body-format": "storage"}
         )
+        self._check_page_space(page, space_id)
         return self._page_record(page, include_content=True)
+
+    @staticmethod
+    def _check_page_space(page: dict[str, Any], space_id: str) -> None:
+        if not page.get("spaceId"):
+            raise SourceReadError("Confluence page response omitted its space identity")
+        if str(page["spaceId"]) != space_id:
+            raise SourcePermissionError("Page is outside the configured Confluence space")
 
     @staticmethod
     def _page_record(

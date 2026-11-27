@@ -95,11 +95,15 @@ tree/file reads and Confluence space/page reads. Jira and Confluence scoped
 Atlassian API tokens use HTTP Basic with the configured account email; GitHub
 uses a Bearer fine-grained token. Jira reads require project browse access and
 the applicable Jira read scope. GitHub needs repository metadata and contents
-read access. Confluence page bodies require the applicable content-read scope
-(`read:confluence-content.all` or its granular equivalent) and space view
-permission. These adapters perform GET requests only and classify permission,
-not-found, transient and unsupported results explicitly. They do not publish
-or update content.
+read access. Confluence page reads through the REST v2 pages endpoints require
+the `read:page:confluence` scope and permission to view both the page and its
+space. A general content-read scope such as `read:content:confluence` does not
+satisfy that endpoint's documented page scope. These adapters perform GET
+requests only and classify permission, not-found, transient and unsupported
+results explicitly. GitHub reads are restricted to the configured branch and
+exclude environment files from discovery and content reads. Confluence page
+reads check the configured space before requesting content and again after the
+content read. They do not publish or update content.
 
 ## Artefact registry
 

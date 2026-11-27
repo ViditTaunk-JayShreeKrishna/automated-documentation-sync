@@ -1,4 +1,5 @@
 import base64
+from io import BytesIO
 from urllib.error import HTTPError
 
 import pytest
@@ -152,6 +153,35 @@ def test_github_read_file_decodes_content_and_retains_blob_version():
     assert record.content == "current content"
 
 
+def test_github_rejects_other_branch_and_environment_files():
+    client = StubClient([])
+    adapter = GitHubSourceAdapter(settings(), client)
+    with pytest.raises(SourcePermissionError, match="tracked branch"):
+        adapter.read_file("README.md", ref="main")
+    for path in (".env", "nested/.env.production"):
+        with pytest.raises(SourcePermissionError, match="environment file"):
+            adapter.read_file(path)
+    assert not client.requests
+
+
+def test_github_listing_excludes_environment_files():
+    client = StubClient(
+        [
+            {"commit": {"sha": "commit-1"}},
+            {
+                "truncated": False,
+                "tree": [
+                    {"type": "blob", "path": ".env", "sha": "a"},
+                    {"type": "blob", "path": "nested/.env.production", "sha": "b"},
+                    {"type": "blob", "path": "README.md", "sha": "c"},
+                ],
+            },
+        ]
+    )
+    page = GitHubSourceAdapter(settings(), client).list_files()
+    assert [record.external_id for record in page.records] == ["README.md"]
+
+
 def test_confluence_page_listing_returns_cursor_and_version():
     client = StubClient(
         [
@@ -197,8 +227,11 @@ def test_confluence_page_listing_returns_cursor_and_version():
 def test_confluence_page_read_returns_storage_content_and_revision():
     client = StubClient(
         [
+            {"results": [{"id": "491547", "key": "ADS"}]},
+            {"id": "294927", "spaceId": "491547"},
             {
                 "id": "294927",
+                "spaceId": "491547",
                 "title": "Implementation",
                 "status": "current",
                 "version": {"number": 10},
@@ -215,8 +248,32 @@ def test_confluence_page_read_returns_storage_content_and_revision():
 
 
 def test_confluence_page_read_propagates_missing_scope_as_permission_error():
-    client = StubClient([SourcePermissionError("confluence source access denied (HTTP 401)")])
+    client = StubClient([
+        {"results": [{"id": "491547", "key": "ADS"}]},
+        SourcePermissionError("confluence source access denied (HTTP 401)"),
+    ])
     with pytest.raises(SourcePermissionError, match="access denied"):
+        ConfluenceSourceAdapter(settings(), client).read_page("294927")
+
+
+def test_confluence_page_rejects_other_space_before_requesting_body():
+    client = StubClient([
+        {"results": [{"id": "491547", "key": "ADS"}]},
+        {"id": "294927", "spaceId": "999"},
+    ])
+    with pytest.raises(SourcePermissionError, match="configured Confluence space"):
+        ConfluenceSourceAdapter(settings(), client).read_page("294927")
+    assert len(client.requests) == 2
+    assert client.requests[1][1] is None
+
+
+def test_confluence_page_rejects_move_between_metadata_and_body_reads():
+    client = StubClient([
+        {"results": [{"id": "491547", "key": "ADS"}]},
+        {"id": "294927", "spaceId": "491547"},
+        {"id": "294927", "spaceId": "999", "body": {"storage": {"value": "private"}}},
+    ])
+    with pytest.raises(SourcePermissionError, match="configured Confluence space"):
         ConfluenceSourceAdapter(settings(), client).read_page("294927")
 
 
@@ -247,3 +304,27 @@ def test_atlassian_scoped_token_uses_basic_auth_and_redacts_auth_failures(
     with pytest.raises(SourcePermissionError) as error:
         client.get("/rest/api/3/project/KAN")
     assert "token-value" not in str(error.value)
+
+
+def test_confluence_page_scope_401_is_classified_without_exposing_provider_body(
+    monkeypatch,
+):
+    client = _JsonClient(
+        "confluence",
+        "https://api.atlassian.com/ex/confluence/cloud-id",
+        "token-value",
+        "user@example.invalid",
+    )
+    provider_error = b'{"message":"Unauthorized; scope does not match"}'
+
+    def deny(request, timeout):
+        raise HTTPError(
+            request.full_url, 401, "Unauthorized", {}, BytesIO(provider_error)
+        )
+
+    monkeypatch.setattr("docsync.source_adapters.urlopen", deny)
+    with pytest.raises(SourcePermissionError, match="HTTP 401") as error:
+        client.get("/wiki/api/v2/pages/294927")
+
+    assert "token-value" not in str(error.value)
+    assert "scope does not match" not in str(error.value)

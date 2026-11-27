@@ -62,6 +62,16 @@ The migration creates tables for artefacts, dependencies, events, jobs,
 proposals, approvals and audit records. Reversible migration and database
 constraint tests run as part of `python -m pytest`.
 
+## Authorization
+
+Privileged operations require a native-provider-verifiable identity and an
+explicit application role. Document approval and rollback require an active
+owner or designated-reviewer mapping for the specific artefact. Unknown,
+inactive or unverifiable identity and ownership mappings fail closed. Mapping
+changes are durable records and must be accompanied by audit evidence. Native
+Jira, GitHub or Confluence account verification is not claimed until the
+corresponding live integration is configured and tested.
+
 ## Run
 
 In separate activated terminals:

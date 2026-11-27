@@ -128,3 +128,19 @@ class AuditRecord(Base):
     outcome: Mapped[str] = mapped_column(String(32), nullable=False)
     details: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OwnerMapping(Base):
+    __tablename__ = "owner_mappings"
+    __table_args__ = (
+        UniqueConstraint("artefact_id", "account_id", "role", name="uq_owner_mapping"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid_value)
+    artefact_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("artefacts.id", ondelete="CASCADE"), nullable=False)
+    account_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    delegate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

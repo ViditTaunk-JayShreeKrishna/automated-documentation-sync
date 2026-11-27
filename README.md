@@ -152,6 +152,18 @@ Do not register live senders yet: the receiver covers only a subset of events,
 the worker is idle, and the HTTPS endpoint and permissions are not established.
 These steps describe prerequisites, not evidence that a hook exists or works.
 
+## AI adapter progress
+
+IP-14 has a provider-independent proposal interface and validates the shape of
+unapproved drafts. It requires separate provider-policy, context-authorization
+and safety-classification checks before calling a provider, and screens the
+returned text. Tests exercise these boundaries with local fakes only. The
+checks do not implement a production policy verifier, authorization resolver,
+or comprehensive sensitive-data classifier. No runtime provider is selected
+or enabled, and regex screening alone cannot establish that data is safe.
+Provider retention, access, processing and data-handling terms require
+independent verification against project policy before any live generation.
+
 ## Artefact registry
 
 Registered artefacts have an immutable application UUID and a unique
